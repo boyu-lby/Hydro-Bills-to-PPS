@@ -1,0 +1,53 @@
+import pyautogui
+
+import time
+
+import sys
+
+from PyQt5.QtWidgets import QApplication
+
+from Controller import Controller
+from GUI import MainWindow
+from Model import Model
+from VendorInvoicesExtraction.burlington_hydro_scan import parse_burlington_hydro_bill
+from VendorInvoicesExtraction.fortis_scan import parse_fortis_bill
+from VendorInvoicesExtraction.grimsby import parse_grimsby_bill
+from VendorInvoicesExtraction.toronto_hydro_scan import parse_toronto_hydro_bill
+from Web_page_interact import tester_function, pps_single_invoice_input, pps_multiple_invoices_input
+
+from pynput.mouse import Controller as MouseController, Button
+from scan_helper import find_file_with_substring, copy_as_pdf_in_original_and_destination, self_check
+from VendorInvoicesExtraction.welland_scan import parse_welland_bill
+
+def keep_active():
+    print("Keeping Microsoft Teams active. Press Ctrl+C to stop.")
+    while True:
+        pyautogui.move(1, 0)  # Move mouse slightly
+        time.sleep(2)  # Wait 2 seconds
+        pyautogui.move(-1, 0)  # Move it back
+        mouse = MouseController()
+        mouse.click(Button.left, 2)
+        time.sleep(30)  # Wait 5 minutes before repeating
+
+def print_results():
+    pdf_file_path = find_file_with_substring(r"C:\Users\LiBo3\Downloads", "106703-0061087")
+    results = parse_burlington_hydro_bill(pdf_file_path)
+    for key, value in results.items():
+        print(f"{key}: {value}")
+    print(self_check(results))
+
+def run_app():
+    app = QApplication(sys.argv)
+
+    # Create Model, View, Controller
+    model = Model()
+    view = MainWindow()
+    controller = Controller(model, view)
+
+    view.show()
+    sys.exit(app.exec_())
+
+
+if __name__ == "__main__":
+    run_app()
+

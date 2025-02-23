@@ -1,0 +1,7 @@
+todo_invoices_excel_path = r"C:\Users\LiBo3\OneDrive - Government of Ontario\Desktop\HBAES\Invoices To Do.xlsx"
+funding_requested_excel_path = r"C:\Users\LiBo3\OneDrive - Government of Ontario\Desktop\HBAES\Funding Requested.xlsx"
+secceed_invoices_excel_path = r"C:\Users\LiBo3\OneDrive - Government of Ontario\Desktop\HBAES\Succeed Invoices.xlsx"
+failed_invoices_excel_path = r"C:\Users\LiBo3\OneDrive - Government of Ontario\Desktop\HBAES\Failed Invoices.xlsx"
+saved_invoices_excel_path = r"C:\Users\LiBo3\OneDrive - Government of Ontario\Desktop\HBAES\Saved Invoices.xlsx"
+downloaded_invoices_path = r"C:\Users\LiBo3\Downloads"
+renamed_invoices_dir_path = r"C:\Users\LiBo3\OneDrive - Government of Ontario\Desktop\HBAES\Temp Hydro Invoices"
