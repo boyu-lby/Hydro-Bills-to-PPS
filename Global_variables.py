@@ -5,3 +5,4 @@ failed_invoices_excel_path = r"C:\Users\LiBo3\OneDrive - Government of Ontario\D
 saved_invoices_excel_path = r"C:\Users\LiBo3\OneDrive - Government of Ontario\Desktop\HBAES\Saved Invoices.xlsx"
 downloaded_invoices_path = r"C:\Users\LiBo3\Downloads"
 renamed_invoices_dir_path = r"C:\Users\LiBo3\OneDrive - Government of Ontario\Desktop\HBAES\Temp Hydro Invoices"
+configuration_file_path = r"C:\Users\LiBo3\OneDrive - Government of Ontario\Desktop\HBAES\Configuration.txt"

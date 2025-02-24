@@ -9,6 +9,7 @@ from PyQt5.QtWidgets import (
     QFrame, QSizePolicy, QLineEdit, QCheckBox
 )
 import Global_variables
+from Configuration_Window import ConfigurationDialog
 from Excel_helper import open_excel_app, open_succeed_invoices, open_funding_requested_invoices, open_failed_invoices
 
 
@@ -686,6 +687,51 @@ class MainWindow(QMainWindow):
         left_layout.setSpacing(15)
         left_layout.setContentsMargins(15, 15, 15, 15)
 
+        # Add Configuration and Help buttons
+        config_help_container = QWidget()
+        config_help_container.setStyleSheet("background: transparent;")
+        config_help_layout = QHBoxLayout(config_help_container)
+        config_help_layout.setContentsMargins(0, 0, 0, 0)
+        config_help_layout.setSpacing(10)
+
+        # Configuration Button
+        self.config_btn = QPushButton("Configuration")
+        self.config_btn.setFixedHeight(50)
+        self.config_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #7D3C98;
+                color: white;
+                font: bold 12pt 'Arial';
+                border: 2px solid #6C3483;
+                border-radius: 8px;
+            }
+            QPushButton:hover {
+                background-color: #6C3483;
+            }
+        """)
+        config_help_layout.addWidget(self.config_btn, stretch=1)
+        self.config_path = Global_variables.configuration_file_path
+        self.config_btn.clicked.connect(self.show_config_dialog)
+
+        # Help Button
+        self.help_btn = QPushButton("Help")
+        self.help_btn.setFixedHeight(50)
+        self.help_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #28B463;
+                color: white;
+                font: bold 12pt 'Arial';
+                border: 2px solid #239B56;
+                border-radius: 8px;
+            }
+            QPushButton:hover {
+                background-color: #239B56;
+            }
+        """)
+        config_help_layout.addWidget(self.help_btn, stretch=1)
+
+        left_layout.addWidget(config_help_container)
+
         # Add Refresh Button at the top
         self.refresh_btn = QPushButton("🔄 Refresh")
         self.refresh_btn.setStyleSheet("""
@@ -815,6 +861,10 @@ class MainWindow(QMainWindow):
 
         # Finalize layout
         central_widget.setLayout(main_vertical_layout)
+
+    def show_config_dialog(self):
+        dialog = ConfigurationDialog(self.config_path, self)
+        dialog.exec_()
 
     def _on_save_clicked(self):
         self.todoInvoicesSaveRequest.emit()
