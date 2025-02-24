@@ -70,7 +70,7 @@ class Model(QObject):
         "Sheet1", "Invoice Number"))
 
     def get_succeed_invoices(self) -> int:
-        return len(read_column_values(Global_variables.secceed_invoices_excel_path,
+        return len(read_column_values(Global_variables.succeed_invoices_excel_path,
         "Sheet1", "Invoice Number"))
 
     def get_funding_requested_invoices(self) -> int:

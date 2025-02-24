@@ -182,7 +182,7 @@ def pps_multiple_invoices_input(invoices_todo_lst):
             if info is not None:
                 if indicator == 2:
                     print(f"{info[0]} is successfully inputted")
-                    insert_tuples_in_excel(Global_variables.secceed_invoices_excel_path,
+                    insert_tuples_in_excel(Global_variables.succeed_invoices_excel_path,
                         "Sheet1", [info])
                 elif indicator == 1:
                     print(f"{info[0]} is successfully requested for funding, and payment is saved as draft")

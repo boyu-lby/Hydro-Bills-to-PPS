@@ -267,7 +267,7 @@ def open_excel_app(file_path: str):
         return False
 
 def open_succeed_invoices():
-    open_excel_app(Global_variables.secceed_invoices_excel_path)
+    open_excel_app(Global_variables.succeed_invoices_excel_path)
 
 def open_funding_requested_invoices():
     open_excel_app(Global_variables.funding_requested_excel_path)
