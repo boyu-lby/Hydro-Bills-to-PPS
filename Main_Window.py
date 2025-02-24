@@ -11,6 +11,7 @@ from PyQt5.QtWidgets import (
 import Global_variables
 from Configuration_Window import ConfigurationDialog
 from Excel_helper import open_excel_app, open_succeed_invoices, open_funding_requested_invoices, open_failed_invoices
+from Help_Window import HelpDialog
 
 
 # -----------------------------
@@ -728,6 +729,10 @@ class MainWindow(QMainWindow):
                 background-color: #239B56;
             }
         """)
+        # Help file path
+        self.help_path = Global_variables.help_file_path
+        # Connect help button
+        self.help_btn.clicked.connect(self.show_help_dialog)
         config_help_layout.addWidget(self.help_btn, stretch=1)
 
         left_layout.addWidget(config_help_container)
@@ -866,8 +871,13 @@ class MainWindow(QMainWindow):
         dialog = ConfigurationDialog(self.config_path, self)
         dialog.exec_()
 
+    def show_help_dialog(self):
+        dialog = HelpDialog(self.help_path, self)
+        dialog.exec_()
+
     def _on_save_clicked(self):
         self.todoInvoicesSaveRequest.emit()
+        self.middle_widget.expand_notification("Successfully saved")
 
     def _on_process_clicked(self):
         self.todoInvoicesSaveRequest.emit()
