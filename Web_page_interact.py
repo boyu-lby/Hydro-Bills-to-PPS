@@ -20,12 +20,19 @@ from VendorInvoicesExtraction.welland_scan import parse_welland_bill
 from scan_helper import find_file_with_substring, self_check, copy_as_pdf_in_original_and_destination, convert_to_float, \
     calculate_fiscal_year, months_to_next_fiscal_period
 
-
-ONTARIO_EMAIL = "boyu.li@ontario.ca"
-ONTARIO_PASSWORD = "Vbybyvbyby200!"
 TARGET_URL = "https://pps.mto.ad.gov.on.ca/Home.aspx"
 
 def login(driver):
+    try:
+        with open(Global_variables.configuration_file_path, 'r') as f:
+            lines = f.readlines()
+            ONTARIO_EMAIL = lines[0].strip() if len(lines) > 0 else ""
+            ONTARIO_PASSWORD = lines[1].strip() if len(lines) > 1 else ""
+    except FileNotFoundError:
+        print(f"Warning","Configuration file not found. A new one will be created on save.")
+    except Exception as e:
+        print(f"Error", f"Failed to load config: {str(e)}")
+
     # 2. Navigate to Microsoft login page.
     #    Often, just going to your target URL will redirect you to the MS login page,
     #    but you can also go directly to https://login.microsoftonline.com/ if needed.
@@ -77,6 +84,9 @@ def pps_multiple_invoices_input(invoices_todo_lst):
     If an account has no enough fund to pay or already has a payment on pending, it will be recorded in 'Saved Invoices'.
     If an unexpected error happened during the inputting process, it will be recorded in 'Failed Invoices'
     """
+    # Read email and password from config
+
+
     # Login in
     driver = webdriver.Chrome()
     login(driver)
@@ -282,7 +292,7 @@ def pps_single_invoice_input(results, driver=None) -> int:
                 raise PendingPaymentError(results["account_number"])
 
             invoice_number_text = cells[0].text.strip()
-            if invoice_number_text == results["account_number"].replace("-", "").replace(' ', '') + convert_month_abbr(results["suggested_file_name"][-7:-4]) + results["suggested_file_name"][-2:]\
+            if invoice_number_text.replace("-", "").replace(' ', '') == results["account_number"].replace("-", "").replace(' ', '') + convert_month_abbr(results["suggested_file_name"][-7:-4]) + results["suggested_file_name"][-2:]\
                     and status_text != 'Cancelled':
                 raise UnsaveableError(results['account_number'], f"{results['suggested_file_name']} is already exists")
 

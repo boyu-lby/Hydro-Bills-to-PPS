@@ -1,4 +1,4 @@
-from GUI import MainWindow
+from Main_Window import MainWindow
 from Model import Model
 
 
@@ -31,8 +31,9 @@ class Controller:
         self.view.left_section_update_required.connect(self.model.send_left_section_data)
         # When the Left section data is ready, update left section in View
         self.model.left_section_data_ready.connect(self.view.update_left_section)
-
+        # When the invoice data in Model changed, refresh in View
         self.model.todoInvoicesChanged.connect(self.on_model_changed)
+        #
 
         # Read todoinvoices from Excel, and display on View
         self.model.read_todo_invoices_from_excel()
@@ -42,4 +43,7 @@ class Controller:
         self.view.middle_widget.clear_text_bars_in_view()
         for pair in self.model.get_todo_invoices():
             self.view.middle_widget.add_text_bar_from_model(pair[0], pair[1][0], pair[1][1])
+
+    def show_notification(self, message):
+        self.view.middle_widget.expand_notification(message)
 

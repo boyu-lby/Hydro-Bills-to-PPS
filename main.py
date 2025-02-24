@@ -7,7 +7,7 @@ import sys
 from PyQt5.QtWidgets import QApplication
 
 from Controller import Controller
-from GUI import MainWindow
+from Main_Window import MainWindow
 from Model import Model
 from VendorInvoicesExtraction.burlington_hydro_scan import parse_burlington_hydro_bill
 from VendorInvoicesExtraction.fortis_scan import parse_fortis_bill
