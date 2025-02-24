@@ -57,9 +57,19 @@ class TextBar(QWidget):
     def __init__(self, text_content, parent=None):
         super().__init__(parent)
         self.text_content = str(text_content)
-        self.init_ui()
+        self.original_style = """
+                    QLabel {
+                        background-color: #F8F9F9;
+                        border: 1px solid #E5E7E9;
+                        border-radius: 4px;
+                        padding: 6px;
+                        font: 10pt 'Arial';
+                        qproperty-alignment: AlignVCenter;
+                    }
+                """
         self.setFixedHeight(60)
         self.drop_text = None
+        self.init_ui()
 
     def init_ui(self):
         layout = QHBoxLayout(self)
@@ -134,6 +144,22 @@ class TextBar(QWidget):
 
         # Connect the drop label's signal to a handler
         self.drop_label.dropped.connect(self.handle_drop_event)
+
+    def set_highlight(self, highlight: bool):
+        """Toggle highlight state"""
+        if highlight:
+            self.label_text.setStyleSheet("""
+                QLabel {
+                    background-color: #FFF3B0;
+                    border: 2px solid #F1C40F;
+                    border-radius: 4px;
+                    padding: 6px;
+                    font: 10pt 'Arial';
+                    qproperty-alignment: AlignVCenter;
+                }
+            """)
+        else:
+            self.label_text.setStyleSheet(self.original_style)
 
     def handle_delete_event(self):
         self.textBarDeleted.emit(self.text_content)
@@ -299,15 +325,13 @@ class MiddleWidget(QWidget):
         self.textBars = []
         self.init_ui()
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.notification_expanded = False
 
     def init_ui(self):
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
-        # -------------------------
-        # 1) Top Control Bar
-        # -------------------------
         # -------------------------
         # 1) Top Control Bar
         # -------------------------
@@ -352,6 +376,7 @@ class MiddleWidget(QWidget):
                        border: 2px solid #1ABC9C;
                    }
                """)
+        self.search_label.returnPressed.connect(self.perform_search)
         top_layout.addWidget(self.search_label, stretch=7)
 
         # Right Side Container (Global controls)
@@ -402,16 +427,46 @@ class MiddleWidget(QWidget):
 
         main_layout.addWidget(top_bar)
 
-        # --------------------------------
-        # 2) Scroll Area for TextBars
-        # --------------------------------
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setStyleSheet("border: none;")
+        # -------------------------
+        # 2) Notification Section
+        # -------------------------
+        self.notification_container = QWidget()
+        self.notification_container.setStyleSheet("""
+                    QWidget {
+                        background-color: #FCF3CF;
+                        border-bottom: 1px solid #F4D03F;
+                    }
+                """)
+        self.notification_container.setMaximumHeight(0)
+        self.notification_container.setMinimumHeight(0)
 
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setStyleSheet("""
+        notification_layout = QVBoxLayout(self.notification_container)
+        notification_layout.setContentsMargins(10, 5, 10, 5)
+
+        self.notification_label = QLabel()
+        self.notification_label.setStyleSheet("""
+                    QLabel {
+                        color: #7E5109;
+                        font: 10pt 'Arial';
+                        padding: 5px;
+                    }
+                """)
+        self.notification_label.setWordWrap(True)
+
+        scroll = QScrollArea()
+        scroll.setWidget(self.notification_label)
+        scroll.setWidgetResizable(True)
+        scroll.setStyleSheet("border: none; background: transparent;")
+        notification_layout.addWidget(scroll)
+
+        main_layout.addWidget(self.notification_container)
+
+        # --------------------------------
+        # 3) Scroll Area for TextBars
+        # --------------------------------
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setStyleSheet("""
             QScrollArea {
                 border: none;
                 background-color: transparent;
@@ -427,8 +482,8 @@ class MiddleWidget(QWidget):
         self.scroll_layout.setSpacing(10)
         self.scroll_layout.addStretch()
 
-        scroll_area.setWidget(self.scroll_content)
-        main_layout.addWidget(scroll_area)
+        self.scroll_area.setWidget(self.scroll_content)
+        main_layout.addWidget(self.scroll_area)
 
         # Fixed bottom input bar
         input_bar = QWidget()
@@ -458,6 +513,54 @@ class MiddleWidget(QWidget):
         self.global_drop.dropped.connect(self.apply_to_all_bars)
         self.global_delete_btn.clicked.connect(self.clear_text_bars)
 
+    def perform_search(self):
+        """Handle search functionality with highlighting and scrolling"""
+        search_text = self.search_label.text().strip().lower()
+        first_match = None
+
+        # Clear previous highlights
+        for i in range(self.scroll_layout.count() - 1):
+            item = self.scroll_layout.itemAt(i)
+            if item.widget() and isinstance(item.widget(), TextBar):
+                text_bar = item.widget()
+                text_bar.set_highlight(False)  # Clear previous highlight
+
+                # Check match
+                if search_text and search_text in text_bar.text_content.lower():
+                    text_bar.set_highlight(True)
+                    if not first_match:
+                        first_match = text_bar
+
+        # Scroll to first match if exists
+        if first_match:
+            self.scroll_area.ensureWidgetVisible(first_match)
+        elif search_text:
+            self.expand_notification(f"No results found for '{search_text}'")
+
+    def expand_notification(self, message: str, duration_ms: int = 300):
+        """Expand notification section with animation"""
+        self.notification_label.setText(message)
+
+        self.anim = QPropertyAnimation(self.notification_container, b"maximumHeight")
+        self.anim.setDuration(duration_ms)
+        self.anim.setStartValue(self.notification_container.height())
+        self.anim.setEndValue(100)  # Adjust height as needed
+        self.anim.setEasingCurve(QEasingCurve.OutQuad)
+        self.anim.start()
+
+        self.notification_expanded = True
+
+    def collapse_notification(self, duration_ms: int = 200):
+        """Collapse notification section with animation"""
+        self.anim = QPropertyAnimation(self.notification_container, b"maximumHeight")
+        self.anim.setDuration(duration_ms)
+        self.anim.setStartValue(self.notification_container.height())
+        self.anim.setEndValue(0)
+        self.anim.setEasingCurve(QEasingCurve.InQuad)
+        self.anim.start()
+
+        self.notification_expanded = False
+
     def apply_to_all_bars(self, text):
         """Apply dropped text to all TextBars"""
         for i in range(self.scroll_layout.count() - 1):  # Exclude stretch
@@ -468,9 +571,11 @@ class MiddleWidget(QWidget):
 
     def add_text_bar(self):
         # to prevent adding duplicated invoice number
+        self.collapse_notification(duration_ms=0)
         account = self.text_input.text().strip().replace(" ", "")
         for textBar in self.textBars:
             if account == textBar.text_content:
+                self.expand_notification("Input account number already existed")
                 return
 
         if account:
