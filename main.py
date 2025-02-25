@@ -9,13 +9,10 @@ from PyQt5.QtWidgets import QApplication
 from Controller import Controller
 from Main_Window import MainWindow
 from Model import Model
-from VendorInvoicesExtraction.burlington_hydro_scan import parse_burlington_hydro_bill
-from VendorInvoicesExtraction.fortis_scan import parse_fortis_bill
-from VendorInvoicesExtraction.grimsby import parse_grimsby_bill
-from VendorInvoicesExtraction.toronto_hydro_scan import parse_toronto_hydro_bill
-from Web_page_interact import tester_function, pps_single_invoice_input, pps_multiple_invoices_input
 
 from pynput.mouse import Controller as MouseController, Button
+
+from VendorInvoicesExtraction.NPE import parse_NPE_bill
 from scan_helper import find_file_with_substring, copy_as_pdf_in_original_and_destination, self_check
 from VendorInvoicesExtraction.welland_scan import parse_welland_bill
 
@@ -31,7 +28,7 @@ def keep_active():
 
 def print_results(invoice):
     pdf_file_path = find_file_with_substring(r"C:\Users\LiBo3\Downloads", invoice)
-    results = parse_welland_bill(pdf_file_path)
+    results = parse_NPE_bill(pdf_file_path)
     for key, value in results.items():
         print(f"{key}: {value}")
     print(self_check(results))

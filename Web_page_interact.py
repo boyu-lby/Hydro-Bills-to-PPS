@@ -10,6 +10,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from Excel_helper import read_column_values, populate_invoice_numbers, delete_cell_content_if_matches, \
     insert_tuples_in_excel, read_cell_content_from_first_two_col
 from OCR_helper import convert_month_abbr, get_today_date
+from VendorInvoicesExtraction.NPE import parse_NPE_bill
 from VendorInvoicesExtraction.alectra_scan import parse_alectra_bill
 from VendorInvoicesExtraction.burlington_hydro_scan import parse_burlington_hydro_bill
 from CustomizedExceptions import RequestApprovalError, InvoiceScanError, AmountError, PendingPaymentError, AccountNumberError, ExtractedDataUnmatchError, UnsaveableError
@@ -129,6 +130,9 @@ def pps_multiple_invoices_input(invoices_todo_lst):
             elif invoice[1] == "Fortis":
                 print(f"Fortis")
                 results = parse_fortis_bill(pdf_file_path)
+            elif invoice[1] == "NPE":
+                print(f"NPE")
+                results = parse_NPE_bill(pdf_file_path)
             elif invoice[1] == "Toronto Hydro":
                 print(f"Toronto Hydro")
                 results = parse_toronto_hydro_bill(pdf_file_path)

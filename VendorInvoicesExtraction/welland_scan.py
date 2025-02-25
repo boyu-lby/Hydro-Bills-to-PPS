@@ -1,5 +1,4 @@
 import fitz
-import pdfplumber
 import re
 from scan_helper import get_month_year, convert_to_float, format_date_str, switch_date_and_month
 

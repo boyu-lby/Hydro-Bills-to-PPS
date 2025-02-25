@@ -1,1 +1,5 @@
-Please close all relevant file and Excel table before run this app, process invoices, or refresh
+1. (MOST IMPORTANT) Please close all relevant files and Excel tables before you run this app, process invoices, or refresh
+
+2. Keep the source PDF folder (the folder where you saved hydro bill invoices) clean, only contains the relevant PDFs.
+
+3. The name of source invoice PDF must contains the account number.

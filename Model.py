@@ -1,4 +1,3 @@
-import sys
 from PyQt5.QtCore import Qt, pyqtSignal, QObject
 
 from Excel_helper import insert_tuples_in_excel, read_column_values, clear_all, read_cell_content_from_first_two_col

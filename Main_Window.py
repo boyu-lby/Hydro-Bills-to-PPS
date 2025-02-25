@@ -1,5 +1,3 @@
-import sys
-import os
 from PyQt5.QtCore import QPropertyAnimation, QEasingCurve
 from PyQt5.QtCore import Qt, QMimeData, pyqtSignal
 from PyQt5.QtGui import QDrag, QPalette, QColor, QPixmap
@@ -798,7 +796,7 @@ class MainWindow(QMainWindow):
         right_layout.setContentsMargins(20, 20, 20, 20)
 
         # Draggable labels
-        texts = ["", "Alectra", "Burlington Hydro", "Fortis", "Grimsby", "Toronto Hydro", "Welland"]
+        texts = ["", "Alectra", "Burlington Hydro", "Fortis", "Grimsby", "NPE", "Toronto Hydro", "Welland"]
         for t in texts:
             lbl = DraggableLabel(t)
             right_layout.addWidget(lbl)

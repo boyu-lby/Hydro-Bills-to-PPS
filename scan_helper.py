@@ -1,7 +1,6 @@
 import datetime
 import os
 import shutil
-from logging import exception
 
 from CustomizedExceptions import InvoicePDFNotFoundError, AmountError, NegativeAmountError
 
@@ -191,7 +190,7 @@ def self_check(results):
     if results["invoice_subtotal"] != round(float(results["Late Payment Charge"]) + float(results["ontario_electricity_rebate"]) + \
         float(results["balance_forward"]) + float(results["total_electricity_charges"]), 2):
         raise AmountError(results['account_number'])
-    for data in results:
+    for data in results.values():
         if data is None:
             raise AmountError(results['account_number'])
     if convert_to_float(results['amount_due']) <= 0:
