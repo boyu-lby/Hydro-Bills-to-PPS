@@ -11,6 +11,10 @@ class UnsaveableError(Exception):
         self.account_number = account_number
         self.message = message
 
+class InvoicePDFNotFoundError(UnsaveableError):
+    """Exception raised when a text is not found."""
+    def __init__(self, account_number):
+        UnsaveableError.__init__(self, account_number, "Invoice PDF not found in designated directory")
 
 class OCRFindingError(UnsaveableError):
     """Exception raised when a text is not found."""
@@ -46,4 +50,9 @@ class ExtractedDataUnmatchError(UnsaveableError):
     """Exception raised when amount does not match"""
     def __init__(self, account_number):
         UnsaveableError.__init__(self, account_number, "has unmatch amount")
+
+class NegativeAmountError(UnsaveableError):
+    """Exception raised when amount is negative"""
+    def __init__(self, account_number):
+        UnsaveableError.__init__(self, account_number, "has negative amount")
 

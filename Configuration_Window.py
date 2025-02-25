@@ -10,7 +10,7 @@ class ConfigurationDialog(QDialog):
 
     def init_ui(self):
         self.setWindowTitle("Configuration")
-        self.setFixedSize(400, 200)
+        self.setFixedSize(400, 350)
 
         layout = QVBoxLayout()
         layout.setContentsMargins(20, 20, 20, 20)
@@ -28,6 +28,12 @@ class ConfigurationDialog(QDialog):
         self.password_input.setEchoMode(QLineEdit.Password)
         layout.addWidget(password_label)
         layout.addWidget(self.password_input)
+
+        # Invoice pdf dir path Section
+        path_label = QLabel("Invoice PDF dir path:")
+        self.path_input = QLineEdit()
+        layout.addWidget(path_label)
+        layout.addWidget(self.path_input)
 
         # Save Button
         save_btn = QPushButton("Save & Close")
@@ -52,8 +58,12 @@ class ConfigurationDialog(QDialog):
         try:
             with open(self.config_path, 'r') as f:
                 lines = f.readlines()
-                self.email_input.setText(lines[0].strip() if len(lines) > 0 else "")
-                self.password_input.setText(lines[1].strip() if len(lines) > 1 else "")
+                if len(lines) > 0:
+                    self.email_input.setText(lines[0].strip() if len(lines) > 0 else "")
+                if len(lines) > 1:
+                    self.password_input.setText(lines[1].strip() if len(lines) > 1 else "")
+                if len(lines) > 2:
+                    self.path_input.setText(lines[2].strip() if len(lines) > 1 else "")
         except FileNotFoundError:
             QMessageBox.warning(self, "Warning",
                                 "Configuration file not found. A new one will be created on save.")
@@ -65,6 +75,7 @@ class ConfigurationDialog(QDialog):
             with open(self.config_path, 'w') as f:
                 f.write(f"{self.email_input.text()}\n")
                 f.write(f"{self.password_input.text()}\n")
+                f.write(f"{self.path_input.text()}\n")
             self.accept()
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to save config: {str(e)}")

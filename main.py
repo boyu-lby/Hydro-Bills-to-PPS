@@ -29,9 +29,9 @@ def keep_active():
         mouse.click(Button.left, 2)
         time.sleep(30)  # Wait 5 minutes before repeating
 
-def print_results():
-    pdf_file_path = find_file_with_substring(r"C:\Users\LiBo3\Downloads", "106703-0061087")
-    results = parse_burlington_hydro_bill(pdf_file_path)
+def print_results(invoice):
+    pdf_file_path = find_file_with_substring(r"C:\Users\LiBo3\Downloads", invoice)
+    results = parse_welland_bill(pdf_file_path)
     for key, value in results.items():
         print(f"{key}: {value}")
     print(self_check(results))
@@ -50,4 +50,3 @@ def run_app():
 
 if __name__ == "__main__":
     run_app()
-

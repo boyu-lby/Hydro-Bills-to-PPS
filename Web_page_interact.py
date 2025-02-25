@@ -76,6 +76,16 @@ def login(driver):
     except:
         print("No 'Stay signed in?' prompt appeared, continuing...")
 
+def get_invoice_dir_path():
+    try:
+        with open(Global_variables.configuration_file_path, 'r') as f:
+            lines = f.readlines()
+            return lines[2].strip() if len(lines) > 1 else ""
+    except FileNotFoundError:
+        print(f"Warning","Configuration file not found. A new one will be created on save.")
+    except Exception as e:
+        print(f"Error", f"Failed to load config: {str(e)}")
+
 
 def pps_multiple_invoices_input(invoices_todo_lst):
     """
@@ -95,6 +105,7 @@ def pps_multiple_invoices_input(invoices_todo_lst):
 
     # Iterate all invoices
     for invoice in invoices_todo_lst:
+        # invoice[0] is account number, invoice[1] is vendor
         print('-----------------------------')
         if invoice is None or invoice[0] is None:
             continue
@@ -107,36 +118,38 @@ def pps_multiple_invoices_input(invoices_todo_lst):
         info = None
         try:
             # Scan the invoice PDF and extract the data
-            try:
-                pdf_file_path = find_file_with_substring(Global_variables.downloaded_invoices_path, str(invoice[0]))
-                # Use right invoice scanning method
-                if invoice[1] == "Alectra":
-                    print(f"Alectra")
-                    results = parse_alectra_bill(pdf_file_path)
-                elif invoice[1] == "Burlington Hydro":
-                    print(f"Burlington Hydro")
-                    results = parse_burlington_hydro_bill(pdf_file_path)
-                elif invoice[1] == "Fortis":
-                    print(f"Fortis")
-                    results = parse_fortis_bill(pdf_file_path)
-                elif invoice[1] == "Toronto Hydro":
-                    print(f"Toronto Hydro")
-                    results = parse_toronto_hydro_bill(pdf_file_path)
-                elif invoice[1] == "Welland":
-                    print(f"Welland")
-                    results = parse_welland_bill(pdf_file_path)
-                elif invoice[1] == "Grimsby":
-                    print(f"Grimsby")
-                    results = parse_grimsby_bill(pdf_file_path)
-                else:
-                    print(f"Invalid Vendor Name: {invoice[1]}")
-                    raise UnsaveableError(invoice[0], 'Invalid vendor name')
+            pdf_file_path = find_file_with_substring(get_invoice_dir_path(), str(invoice[0]))
+            # Use right invoice scanning method
+            if invoice[1] == "Alectra":
+                print(f"Alectra")
+                results = parse_alectra_bill(pdf_file_path)
+            elif invoice[1] == "Burlington Hydro":
+                print(f"Burlington Hydro")
+                results = parse_burlington_hydro_bill(pdf_file_path)
+            elif invoice[1] == "Fortis":
+                print(f"Fortis")
+                results = parse_fortis_bill(pdf_file_path)
+            elif invoice[1] == "Toronto Hydro":
+                print(f"Toronto Hydro")
+                results = parse_toronto_hydro_bill(pdf_file_path)
+            elif invoice[1] == "Welland":
+                print(f"Welland")
+                results = parse_welland_bill(pdf_file_path)
+            elif invoice[1] == "Grimsby":
+                print(f"Grimsby")
+                results = parse_grimsby_bill(pdf_file_path)
+            else:
+                print(f"Invalid Vendor Name: {invoice[1]}")
+                raise UnsaveableError(invoice[0], 'Invalid vendor name')
 
-                for key, value in results.items():
-                    print(f"{key}: {value}")
-            except:
-                raise InvoiceScanError(invoice[0])
+            for key, value in results.items():
+                print(f"{key}: {value}")
 
+            # Check invoice[0] (account number) match the account number in PDF
+            if invoice[0] not in results['account_number']:
+                raise UnsaveableError(invoice[0], f"The data in file named '{invoice[0]}' contains the data of '{results['account_number']}'")
+
+            # Check data is reasonable or not
             if not self_check(results):
                 raise AmountError(invoice[0])
 
@@ -280,6 +293,7 @@ def pps_single_invoice_input(results, driver=None) -> int:
         # Get all rows inside the table
         rows = table.find_elements(By.TAG_NAME, "tr")
 
+        index = 0
         for row in rows:
             # Find all cells in the row
             cells = row.find_elements(By.TAG_NAME, "td")
@@ -288,13 +302,14 @@ def pps_single_invoice_input(results, driver=None) -> int:
 
             # Check if last element contains text 'Pending Payment'
             status_text = cells[9].text.strip()
-            if status_text == "Pending Payment":
+            if status_text == "Pending Payment" and index < 10:
                 raise PendingPaymentError(results["account_number"])
 
             invoice_number_text = cells[0].text.strip()
             if invoice_number_text.replace("-", "").replace(' ', '') == results["account_number"].replace("-", "").replace(' ', '') + convert_month_abbr(results["suggested_file_name"][-7:-4]) + results["suggested_file_name"][-2:]\
                     and status_text != 'Cancelled':
                 raise UnsaveableError(results['account_number'], f"{results['suggested_file_name']} is already exists")
+            index += 1
 
         # Check if enough funding in account
         indicator = 2
