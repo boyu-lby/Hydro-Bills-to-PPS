@@ -3,6 +3,8 @@ import os
 import shutil
 from logging import exception
 
+from CustomizedExceptions import InvoicePDFNotFoundError, AmountError, NegativeAmountError
+
 
 def convert_to_float(amount_str) -> float:
     """
@@ -38,7 +40,7 @@ def find_file_with_substring(directory_path, substring):
                 return directory_path +  "\\" + entry  # Return the first match
 
         # If no match is found
-        return None
+        raise InvoicePDFNotFoundError(substring)
 
     except FileNotFoundError:
         print(f"Directory not found: {directory_path}")
@@ -188,10 +190,12 @@ def self_check(results):
     """
     if results["invoice_subtotal"] != round(float(results["Late Payment Charge"]) + float(results["ontario_electricity_rebate"]) + \
         float(results["balance_forward"]) + float(results["total_electricity_charges"]), 2):
-        return False
+        raise AmountError(results['account_number'])
     for data in results:
         if data is None:
-            return False
+            raise AmountError(results['account_number'])
+    if convert_to_float(results['amount_due']) <= 0:
+        raise NegativeAmountError(results['account_number'])
     return True
 
 def calculate_fiscal_year(date):

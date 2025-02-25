@@ -9,6 +9,7 @@ from Web_page_interact import pps_multiple_invoices_input
 class Model(QObject):
     todoInvoicesChanged = pyqtSignal()
     left_section_data_ready = pyqtSignal(tuple)
+    notificationPromted = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -24,7 +25,7 @@ class Model(QObject):
 
     def update_todo_invoice(self, account: str, vendor=None):
         print(f"updated {account} with vendor {vendor}")
-        self.todo_invoices.update({account: [vendor, False]})
+        self.todo_invoices.update({account: [vendor, self.todo_invoices.get(account)[1]]})
 
     def update_invoice_checkbox_state(self, account: str, checkbox_state: bool):
         print(f"set {account}'s checkbox to {checkbox_state}")
@@ -40,11 +41,15 @@ class Model(QObject):
 
     def process_all_todo_invoices(self):
         print(self.todo_invoices)
+
         todo_invoices = []
         for invoice in self.todo_invoices.items():
             if invoice[1][1] is None or invoice[1][1] in ("", False):
                 continue
             todo_invoices.append([invoice[0], invoice[1][0]])
+        if len(todo_invoices) == 0:
+            self.notificationPromted.emit("No Selected Invoices")
+            return
         pps_multiple_invoices_input(todo_invoices)
         self.read_todo_invoices_from_excel()
         self.send_left_section_data()

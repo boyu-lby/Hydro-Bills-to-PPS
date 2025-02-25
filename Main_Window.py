@@ -357,6 +357,7 @@ class MiddleWidget(QWidget):
                     }
                 """)
         self.global_checkbox.stateChanged.connect(self.toggle_all_checkboxes)
+        self.global_checkbox.setChecked(False)
         top_layout.addWidget(self.global_checkbox)
 
         # Search Bar (Replaces Notification Label)
@@ -648,7 +649,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Fancy Drag and Drop PDF + Text GUI")
+        self.setWindowTitle("PPS Auto Payment")
         self.setGeometry(100, 100, 1400, 900)
 
         # Main window styling
@@ -880,6 +881,8 @@ class MainWindow(QMainWindow):
         self.middle_widget.expand_notification("Successfully saved")
 
     def _on_process_clicked(self):
+        if not self.check_config():
+            return
         self.todoInvoicesSaveRequest.emit()
         self.todoInvoicesProcessRequest.emit()
 
@@ -887,3 +890,21 @@ class MainWindow(QMainWindow):
         self.succeed_invoices_button.set_text_to_right_label(str(numbers[0]))
         self.funding_request_invoices_button.set_text_to_right_label(str(numbers[1]))
         self.failed_invoices_button.set_text_to_right_label(str(numbers[2]))
+
+    def check_config(self) -> bool:
+        try:
+            with open(Global_variables.configuration_file_path, 'r') as f:
+                lines = f.readlines()
+                email = lines[0].strip() if len(lines) > 0 else ""
+                password = lines[1].strip() if len(lines) > 0 else ""
+                path = lines[1].strip() if len(lines) > 0 else ""
+                if len(email.replace(' ', '')) == 0 or len(password) == 0 or len(path) == 0:
+                    self.middle_widget.expand_notification("All Input bars in configuration must be filled")
+                    return False
+                return True
+        except FileNotFoundError:
+            self.middle_widget.expand_notification("Configuration file not found. A new one will be created on save.")
+            return False
+        except Exception as e:
+            self.middle_widget.expand_notification(f"Failed to load config: {str(e)}")
+            return False

@@ -33,7 +33,8 @@ class Controller:
         self.model.left_section_data_ready.connect(self.view.update_left_section)
         # When the invoice data in Model changed, refresh in View
         self.model.todoInvoicesChanged.connect(self.on_model_changed)
-        #
+        # Send notification from Model to View
+        self.model.notificationPromted.connect(self.show_notification)
 
         # Read todoinvoices from Excel, and display on View
         self.model.read_todo_invoices_from_excel()
