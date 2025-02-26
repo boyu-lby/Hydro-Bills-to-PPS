@@ -19,7 +19,7 @@ from VendorInvoicesExtraction.grimsby import parse_grimsby_bill
 from VendorInvoicesExtraction.toronto_hydro_scan import parse_toronto_hydro_bill
 from VendorInvoicesExtraction.welland_scan import parse_welland_bill
 from scan_helper import find_file_with_substring, self_check, copy_as_pdf_in_original_and_destination, convert_to_float, \
-    calculate_fiscal_year, months_to_next_fiscal_period
+    calculate_fiscal_year, months_to_next_fiscal_period, months_since_invoice
 
 TARGET_URL = "https://pps.mto.ad.gov.on.ca/Home.aspx"
 
@@ -293,21 +293,24 @@ def pps_single_invoice_input(results, driver=None) -> int:
         table = wait.until(
             EC.presence_of_element_located((By.ID, "contentPlaceHolder_invoiceControl_invoices"))
         )
-
         # Get all rows inside the table
         rows = table.find_elements(By.TAG_NAME, "tr")
-
         index = 0
+        number_of_asserted_checked = 0
         for row in rows:
             # Find all cells in the row
             cells = row.find_elements(By.TAG_NAME, "td")
             if len(cells) <= 9:
                 continue
-
             # Check if last element contains text 'Pending Payment'
             status_text = cells[9].text.strip()
-            if status_text == "Pending Payment" and index < 10:
+            if status_text == "Pending Payment" and index < 20:
                 raise PendingPaymentError(results["account_number"])
+            # Check first two asserted invoices, check if they haven't been paid for a long time
+            elif Global_variables.is_period_validation_needed and status_text == "Asserted" and number_of_asserted_checked < 2:
+                if months_since_invoice(cells[0].text.strip()) >= 5:
+                    raise UnsaveableError(results["account_number"], "This account haven't been paid for a long time")
+                number_of_asserted_checked += 1
 
             invoice_number_text = cells[0].text.strip()
             if invoice_number_text.replace("-", "").replace(' ', '') == results["account_number"].replace("-", "").replace(' ', '') + convert_month_abbr(results["suggested_file_name"][-7:-4]) + results["suggested_file_name"][-2:]\

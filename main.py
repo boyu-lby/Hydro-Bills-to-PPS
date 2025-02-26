@@ -13,7 +13,8 @@ from Model import Model
 from pynput.mouse import Controller as MouseController, Button
 
 from VendorInvoicesExtraction.NPE import parse_NPE_bill
-from scan_helper import find_file_with_substring, copy_as_pdf_in_original_and_destination, self_check
+from scan_helper import find_file_with_substring, copy_as_pdf_in_original_and_destination, self_check, \
+    months_since_invoice
 from VendorInvoicesExtraction.welland_scan import parse_welland_bill
 
 def keep_active():

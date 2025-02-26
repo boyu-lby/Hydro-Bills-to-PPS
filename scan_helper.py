@@ -1,5 +1,7 @@
 import datetime
+import difflib
 import os
+import re
 import shutil
 
 from CustomizedExceptions import InvoicePDFNotFoundError, AmountError, NegativeAmountError
@@ -237,3 +239,64 @@ def switch_date_and_month(mm_dd):
     if len(mm_dd) > 5:
         return mm_dd[3:5] + mm_dd[2] + mm_dd[:2] + mm_dd[5:]
     return mm_dd[3:5] + mm_dd[2] + mm_dd[:2]
+
+def months_since_invoice(invoice_name):
+    """
+    Calculate the number of months from the invoice date (extracted from invoice_name)
+    to the current date. The invoice_name must be of the format:
+      account number + month abbreviation (2 or 3 letters) + year (2 or 4 digits)
+    Example valid names: '12345Jan2024', '12345JA24'
+    """
+    # Define a regex pattern to extract the month abbreviation and year.
+    pattern = r'^\d{2,12}-?\d{0,8}([A-Za-z]{2,3})(\d{2}|\d{4})$'
+    match = re.match(pattern, invoice_name)
+    if not match:
+        raise ValueError("Invoice name format is invalid")
+
+    # Extract and normalize parts.
+    month_abbr = match.group(1).upper()  # normalize to uppercase
+    year_str = match.group(2)
+
+    # Mapping of valid month abbreviations (2-letter and 3-letter) to month numbers.
+    month_map = {
+        'JA': 1, 'JAN': 1,
+        'FE': 2, 'FEB': 2,
+        'MR': 3, 'MAR': 3,
+        'AP': 4, 'APR': 4,
+        'MY': 5, 'MAY': 5,
+        'JN': 6, 'JUN': 6,
+        'JL': 7, 'JUL': 7,
+        'AU': 8, 'AUG': 8,
+        'SE': 9, 'SEP': 9,
+        'OC': 10, 'OCT': 10,
+        'NO': 11, 'NOV': 11,
+        'DE': 12, 'DEC': 12,
+    }
+
+    # If the month abbreviation is not recognized, try to correct it using fuzzy matching.
+    if month_abbr not in month_map:
+        # difflib.get_close_matches returns a list of close matches.
+        possible = difflib.get_close_matches(month_abbr, month_map.keys(), n=1, cutoff=0.6)
+        if possible:
+            corrected = possible[0]
+            print(f"Corrected month abbreviation '{month_abbr}' to '{corrected}'")
+            month_abbr = corrected
+        else:
+            raise ValueError(f"Month abbreviation '{month_abbr}' not recognized")
+
+    month = month_map[month_abbr]
+
+    # Convert the year string into an integer.
+    # For a two-digit year, assume it is in the 2000s.
+    if len(year_str) == 2:
+        year = 2000 + int(year_str)
+    else:
+        year = int(year_str)
+
+    # Construct the invoice date (assume the first day of the month).
+    invoice_date = datetime.date(year, month, 1)
+    today = datetime.date.today()
+
+    # Calculate the difference in months.
+    diff = (today.year - invoice_date.year) * 12 + (today.month - invoice_date.month)
+    return diff
