@@ -55,16 +55,21 @@ def login(driver):
     next_button = driver.find_element(By.ID, "idSIButton9")
     next_button.click()
 
-    # 5. Wait for the password field and enter the password.
-    password_input = WebDriverWait(driver, 10).until(
-        EC.visibility_of_element_located((By.NAME, "passwd"))
-    )
-    password_input.clear()
-    password_input.send_keys(ONTARIO_PASSWORD)
+    # 5. (Try to) wait for the password field and enter the password.
+    # If the browser remembers the password, this step might be skipped, causing a timeout.
+    try:
+        password_input = WebDriverWait(driver, 5).until(
+            EC.visibility_of_element_located((By.NAME, "passwd"))
+        )
+        password_input.clear()
+        password_input.send_keys(ONTARIO_PASSWORD)
 
-    # 6. Click "Sign in" (same button ID as Next, "idSIButton9," in many cases).
-    sign_in_button = driver.find_element(By.ID, "idSIButton9")
-    sign_in_button.click()
+        sign_in_button = driver.find_element(By.ID, "idSIButton9")
+        sign_in_button.click()
+    except TimeoutException:
+        # If we get here, the password field didn't appear within 5 seconds,
+        # likely because the browser skipped or auto‐filled the password step.
+        print("Password field did not appear; continuing...")
 
     # 7. (Optional) Handle "Stay signed in?" screen.
     #    Sometimes you see a prompt with the same button ID "idSIButton9" for "Yes."
