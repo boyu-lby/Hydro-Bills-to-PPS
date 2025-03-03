@@ -1,6 +1,6 @@
-Temp\ Hydro\ Invoices/
-.idea
-.venv
-build
-dist
+Temp Hydro Invoices/
+.idea/
+.venv/
+build/
+dist/
 *.exe
