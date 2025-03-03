@@ -251,7 +251,7 @@ def months_since_invoice(invoice_name):
     pattern = r'^\d{2,12}-?\d{0,8}([A-Za-z]{2,3})(\d{2}|\d{4})$'
     match = re.match(pattern, invoice_name)
     if not match:
-        raise ValueError("Invoice name format is invalid")
+        raise ValueError("Unexpected invoice name format in invoice page in PPS")
 
     # Extract and normalize parts.
     month_abbr = match.group(1).upper()  # normalize to uppercase

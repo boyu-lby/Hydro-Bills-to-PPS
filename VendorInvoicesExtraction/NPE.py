@@ -42,8 +42,6 @@ def parse_NPE_bill(pdf_path):
     for page in doc:
         text += page.get_text()
 
-    print(text)
-
     # 1) Account Number
     # Example snippet: "MESSAGES:
     match = re.search(r"MESSAGES:\s*\n?(\d{3,9}-?\d{0,2})", text, re.IGNORECASE)

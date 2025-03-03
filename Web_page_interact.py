@@ -14,6 +14,7 @@ from VendorInvoicesExtraction.NPE import parse_NPE_bill
 from VendorInvoicesExtraction.alectra_scan import parse_alectra_bill
 from VendorInvoicesExtraction.burlington_hydro_scan import parse_burlington_hydro_bill
 from CustomizedExceptions import RequestApprovalError, InvoiceScanError, AmountError, PendingPaymentError, AccountNumberError, ExtractedDataUnmatchError, UnsaveableError
+from VendorInvoicesExtraction.elexicon import parse_elexicon_bill
 from VendorInvoicesExtraction.fortis_scan import parse_fortis_bill
 from VendorInvoicesExtraction.grimsby import parse_grimsby_bill
 from VendorInvoicesExtraction.toronto_hydro_scan import parse_toronto_hydro_bill
@@ -127,25 +128,20 @@ def pps_multiple_invoices_input(invoices_todo_lst):
             pdf_file_path = find_file_with_substring(get_invoice_dir_path(), str(invoice[0]))
             # Use right invoice scanning method
             if invoice[1] == "Alectra":
-                print(f"Alectra")
                 results = parse_alectra_bill(pdf_file_path)
             elif invoice[1] == "Burlington Hydro":
-                print(f"Burlington Hydro")
                 results = parse_burlington_hydro_bill(pdf_file_path)
+            elif invoice[1] == "Elexicon":
+                results = parse_elexicon_bill(pdf_file_path)
             elif invoice[1] == "Fortis":
-                print(f"Fortis")
                 results = parse_fortis_bill(pdf_file_path)
             elif invoice[1] == "NPE":
-                print(f"NPE")
                 results = parse_NPE_bill(pdf_file_path)
             elif invoice[1] == "Toronto Hydro":
-                print(f"Toronto Hydro")
                 results = parse_toronto_hydro_bill(pdf_file_path)
             elif invoice[1] == "Welland":
-                print(f"Welland")
                 results = parse_welland_bill(pdf_file_path)
             elif invoice[1] == "Grimsby":
-                print(f"Grimsby")
                 results = parse_grimsby_bill(pdf_file_path)
             else:
                 print(f"Invalid Vendor Name: {invoice[1]}")
@@ -193,12 +189,12 @@ def pps_multiple_invoices_input(invoices_todo_lst):
                                    "Sheet1", [(invoice[0], "Invoice file not found in folder")])
             continue
 
-        #except Exception as e:
-        #    insert_tuples_in_excel(Global_variables.failed_invoices_excel_path,
-        #        "Sheet1", [(invoice[0], type(e).__name__)])
-        #    print(f"{type(e).__name__}: {invoice[0]}")
-        #    print(str(e))
-        #    continue
+        except Exception as e:
+            insert_tuples_in_excel(Global_variables.failed_invoices_excel_path,
+            "Sheet1", [(invoice[0], type(e).__name__)])
+            print(f"{type(e).__name__}: {invoice[0]}")
+            print(str(e))
+            continue
 
         else:
             if info is not None:
@@ -301,7 +297,7 @@ def pps_single_invoice_input(results, driver=None) -> int:
         # Get all rows inside the table
         rows = table.find_elements(By.TAG_NAME, "tr")
         index = 0
-        number_of_asserted_checked = 0
+        is_period_checked = False
         for row in rows:
             # Find all cells in the row
             cells = row.find_elements(By.TAG_NAME, "td")
@@ -312,10 +308,10 @@ def pps_single_invoice_input(results, driver=None) -> int:
             if status_text == "Pending Payment" and index < 20:
                 raise PendingPaymentError(results["account_number"])
             # Check first two asserted invoices, check if they haven't been paid for a long time
-            elif Global_variables.is_period_validation_needed and status_text == "Asserted" and number_of_asserted_checked < 2:
+            elif Global_variables.is_period_validation_needed and status_text == "Asserted" and not is_period_checked:
                 if months_since_invoice(cells[0].text.strip()) >= 5:
                     raise UnsaveableError(results["account_number"], "This account haven't been paid for a long time")
-                number_of_asserted_checked += 1
+                is_period_checked = True
 
             invoice_number_text = cells[0].text.strip()
             if invoice_number_text.replace("-", "").replace(' ', '') == results["account_number"].replace("-", "").replace(' ', '') + convert_month_abbr(results["suggested_file_name"][-7:-4]) + results["suggested_file_name"][-2:]\
@@ -639,7 +635,7 @@ def check_and_request_funding(driver, results) -> bool:
 
     # Calculate the approximate amount needed
     approximate_amount_needed = round((((convert_to_float(results['amount_due']) - convert_to_float(results['balance_forward']))
-                                 * (months_to_next_fiscal_period(results['statement_date'])+1)) - remaining_funding +
+                                 * max(months_to_next_fiscal_period(results['statement_date']), 1)) - remaining_funding +
                                  convert_to_float(results['balance_forward']))+1, 0)
     print(f"amount_due: {results['amount_due']}")
     print(f"balance_forward: {str(results['balance_forward'])}")
