@@ -1,4 +1,7 @@
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox
+from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QHBoxLayout, QCheckBox
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QIntValidator
+import Global_variables
 
 
 class ConfigurationDialog(QDialog):
@@ -35,6 +38,20 @@ class ConfigurationDialog(QDialog):
         layout.addWidget(path_label)
         layout.addWidget(self.path_input)
 
+        # Time Interval Check Section
+        time_interval_layout = QHBoxLayout()
+        time_interval_label = QLabel("Time Interval Check:")
+        self.time_interval_checkbox = QCheckBox()
+        self.time_interval_checkbox.stateChanged.connect(self.toggle_time_interval)
+        time_interval_layout.addWidget(time_interval_label)
+        time_interval_layout.addWidget(self.time_interval_checkbox)
+        layout.addLayout(time_interval_layout)
+
+        self.time_interval_input = QLineEdit()
+        self.time_interval_input.setValidator(QIntValidator(1, 999999))  # Only allow positive integers
+        self.time_interval_input.setEnabled(False)  # Initially disabled
+        layout.addWidget(self.time_interval_input)
+
         # Save Button
         save_btn = QPushButton("Save & Close")
         save_btn.clicked.connect(self.save_config)
@@ -64,6 +81,14 @@ class ConfigurationDialog(QDialog):
                     self.password_input.setText(lines[1].strip() if len(lines) > 1 else "")
                 if len(lines) > 2:
                     self.path_input.setText(lines[2].strip() if len(lines) > 1 else "")
+                if len(lines) > 3:
+                    time_interval_data = lines[3].strip().split(',')
+                    if len(time_interval_data) == 2:
+                        self.time_interval_checkbox.setChecked(time_interval_data[0] == 'True')
+                        self.time_interval_input.setText(time_interval_data[1])
+                        self.toggle_time_interval(self.time_interval_checkbox.checkState())
+                        Global_variables.is_period_validation_needed = self.time_interval_checkbox.isChecked()
+                        Global_variables.period_need_validate = self.time_interval_input.text()
         except FileNotFoundError:
             QMessageBox.warning(self, "Warning",
                                 "Configuration file not found. A new one will be created on save.")
@@ -76,6 +101,14 @@ class ConfigurationDialog(QDialog):
                 f.write(f"{self.email_input.text()}\n")
                 f.write(f"{self.password_input.text()}\n")
                 f.write(f"{self.path_input.text()}\n")
+                # Save time interval check state and value
+                time_interval_value = self.time_interval_input.text() if self.time_interval_checkbox.isChecked() else ""
+                f.write(f"{self.time_interval_checkbox.isChecked()},{time_interval_value}\n")
             self.accept()
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to save config: {str(e)}")
+
+    def toggle_time_interval(self, state):
+        self.time_interval_input.setEnabled(state == Qt.Checked)
+        if state != Qt.Checked:
+            self.time_interval_input.clear()
