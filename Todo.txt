@@ -1,0 +1,1 @@
+A loading message appears when processing invoices
