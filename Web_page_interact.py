@@ -217,6 +217,9 @@ def pps_single_invoice_input(results, driver=None) -> int:
     :param driver:
     :return: 1 indicates requested funding, 2 indicates requested payment approval
     """
+    # Check if amount is greater that the maximum amount threshold
+    if results["amount_due"] > Global_variables.maximum_payment_amount:
+        raise UnsaveableError(results['account_number'], "Exceeds maximum amount threshold")
 
     # 1. Launch browser (make sure you have installed ChromeDriver or another WebDriver)
     quit_after = False
@@ -284,6 +287,14 @@ def pps_single_invoice_input(results, driver=None) -> int:
             print("Clicked on the only row with 'Approved'.")
         else:
             raise UnsaveableError(results['account_number'], 'Expected to find only one approved account, but found zero or more than one approved account')
+
+        # Check if 'Do not pay' is written in comments
+        comments = WebDriverWait(driver, 10).until(
+            EC.visibility_of_element_located((By.ID, "contentPlaceHolder_agreementControl_ctl00_description"))
+        ).get_attribute("value")
+        comments = comments.replace(' ', '').replace('-', '').replace("'", '')
+        if 'DONOTPAY' in comments or 'DONTPAY' in comments:
+            raise UnsaveableError(results['account_number'], "Found 'Do not pay' in comments")
 
         # Press 'invoice' to see all invoices
         WebDriverWait(driver, 10).until(

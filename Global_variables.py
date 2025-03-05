@@ -9,3 +9,4 @@ help_file_path = r".\Help.txt"
 
 is_period_validation_needed = False
 period_need_validate = 0
+maximum_payment_amount = 20000
