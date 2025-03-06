@@ -13,7 +13,7 @@ class ConfigurationDialog(QDialog):
 
     def init_ui(self):
         self.setWindowTitle("Configuration")
-        self.setFixedSize(400, 350)
+        self.setFixedSize(400, 450)
 
         layout = QVBoxLayout()
         layout.setContentsMargins(20, 20, 20, 20)
@@ -52,6 +52,20 @@ class ConfigurationDialog(QDialog):
         self.time_interval_input.setEnabled(False)  # Initially disabled
         layout.addWidget(self.time_interval_input)
 
+        # Maximum Payment Amount Threshold Section
+        max_payment_layout = QHBoxLayout()
+        max_payment_label = QLabel("Maximum Payment Amount:")
+        self.max_payment_checkbox = QCheckBox()
+        self.max_payment_checkbox.stateChanged.connect(self.toggle_max_payment)
+        max_payment_layout.addWidget(max_payment_label)
+        max_payment_layout.addWidget(self.max_payment_checkbox)
+        layout.addLayout(max_payment_layout)
+
+        self.max_payment_input = QLineEdit()
+        self.max_payment_input.setValidator(QIntValidator(1, 999999))  # Only allow positive integers
+        self.max_payment_input.setEnabled(False)  # Initially disabled
+        layout.addWidget(self.max_payment_input)
+
         # Save Button
         save_btn = QPushButton("Save & Close")
         save_btn.clicked.connect(self.save_config)
@@ -88,7 +102,16 @@ class ConfigurationDialog(QDialog):
                         self.time_interval_input.setText(time_interval_data[1])
                         self.toggle_time_interval(self.time_interval_checkbox.checkState())
                         Global_variables.is_period_validation_needed = self.time_interval_checkbox.isChecked()
-                        Global_variables.period_need_validate = self.time_interval_input.text()
+                        Global_variables.period_need_validate = int(self.time_interval_input.text())
+                if len(lines) > 4:
+                    max_payment_data = lines[4].strip().split(',')
+                    if len(max_payment_data) == 2:
+                        self.max_payment_checkbox.setChecked(max_payment_data[0] == 'True')
+                        self.max_payment_input.setText(max_payment_data[1])
+                        self.toggle_max_payment(self.max_payment_checkbox.checkState())
+                        Global_variables.is_max_payment_validation_needed = self.max_payment_checkbox.isChecked()
+                        Global_variables.max_payment_need_validate = int(self.max_payment_input.text())
+
         except FileNotFoundError:
             QMessageBox.warning(self, "Warning",
                                 "Configuration file not found. A new one will be created on save.")
@@ -104,6 +127,9 @@ class ConfigurationDialog(QDialog):
                 # Save time interval check state and value
                 time_interval_value = self.time_interval_input.text() if self.time_interval_checkbox.isChecked() else ""
                 f.write(f"{self.time_interval_checkbox.isChecked()},{time_interval_value}\n")
+                # Save maximum payment amount state and value
+                max_payment_value = self.max_payment_input.text() if self.max_payment_checkbox.isChecked() else ""
+                f.write(f"{self.max_payment_checkbox.isChecked()},{max_payment_value}\n")
             self.accept()
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to save config: {str(e)}")
@@ -112,3 +138,8 @@ class ConfigurationDialog(QDialog):
         self.time_interval_input.setEnabled(state == Qt.Checked)
         if state != Qt.Checked:
             self.time_interval_input.clear()
+
+    def toggle_max_payment(self, state):
+        self.max_payment_input.setEnabled(state == Qt.Checked)
+        if state != Qt.Checked:
+            self.max_payment_input.clear()

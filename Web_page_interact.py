@@ -28,8 +28,16 @@ def login(driver):
     try:
         with open(Global_variables.configuration_file_path, 'r') as f:
             lines = f.readlines()
-            ONTARIO_EMAIL = lines[0].strip() if len(lines) > 0 else ""
-            ONTARIO_PASSWORD = lines[1].strip() if len(lines) > 1 else ""
+            if len(lines) > 3:
+                time_interval_data = lines[3].strip().split(',')
+                if len(time_interval_data) == 2:
+                    Global_variables.is_period_validation_needed = time_interval_data[0]
+                    Global_variables.period_need_validate = int(time_interval_data[1])
+            if len(lines) > 4:
+                max_payment_data = lines[4].strip().split(',')
+                if len(max_payment_data) == 2:
+                    Global_variables.is_max_payment_validation_needed = max_payment_data[0]
+                    Global_variables.max_payment_need_validate = int(max_payment_data[1])
     except FileNotFoundError:
         print(f"Warning","Configuration file not found. A new one will be created on save.")
     except Exception as e:
@@ -307,6 +315,7 @@ def pps_single_invoice_input(results, driver=None) -> int:
         )
         # Get all rows inside the table
         rows = table.find_elements(By.TAG_NAME, "tr")
+        asserted_invoice_rows = []
         index = 0
         is_period_checked = False
         for row in rows:
@@ -316,11 +325,12 @@ def pps_single_invoice_input(results, driver=None) -> int:
                 continue
             # Check if last element contains text 'Pending Payment'
             status_text = cells[9].text.strip()
-            if status_text == "Pending Payment" and index < 20:
+            if status_text == "Pending Payment" and index < 40:
                 raise PendingPaymentError(results["account_number"])
             # Check first two asserted invoices, check if they haven't been paid for a long time
-            elif Global_variables.is_period_validation_needed and status_text == "Asserted" and not is_period_checked:
-                if months_since_invoice(cells[0].text.strip()) >= 5:
+            elif status_text == "Asserted":
+                asserted_invoice_rows.append(cells)
+                if Global_variables.is_period_validation_needed and not is_period_checked and months_since_invoice(cells[0].text.strip()) >= 5:
                     raise UnsaveableError(results["account_number"], "This account haven't been paid for a long time")
                 is_period_checked = True
 

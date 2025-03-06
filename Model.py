@@ -13,6 +13,15 @@ class Model(QObject):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.todo_invoices = dict()
+        try:
+            with open(Global_variables.configuration_file_path, 'r') as f:
+                lines = f.readlines()
+                ONTARIO_EMAIL = lines[0].strip() if len(lines) > 0 else ""
+                ONTARIO_PASSWORD = lines[1].strip() if len(lines) > 1 else ""
+        except FileNotFoundError:
+            print(f"Warning","Configuration file not found. A new one will be created on save.")
+        except Exception as e:
+            print(f"Error", f"Failed to load config: {str(e)}")
 
     def add_todo_invoice(self, account: str):
         print(f"added {account}")

@@ -47,4 +47,4 @@ def run_app():
     sys.exit(app.exec_())
 
 if __name__ == "__main__":
-    print_results('00465068')
+    run_app()
