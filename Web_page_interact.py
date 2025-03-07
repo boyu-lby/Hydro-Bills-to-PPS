@@ -896,7 +896,45 @@ def tester_function(results, driver=None):
             raise AccountNumberError(results["account_number"])
 
         check_and_request_funding(driver, results)
+        
+         # Press 'invoice' to see all invoices
+        WebDriverWait(driver, 10).until(
+            EC.visibility_of_element_located((By.ID, "tabControl_InvoicesTab_HyperLink"))
+        ).click()
 
+        # Check if any payment is pending and if the suggested invoice number exists
+        table = wait.until(
+            EC.presence_of_element_located((By.ID, "contentPlaceHolder_invoiceControl_invoices"))
+        )
+        # Get all rows inside the table
+        rows = table.find_elements(By.TAG_NAME, "tr")
+        asserted_invoice_rows = []
+        index = 0
+        is_period_checked = False
+        for row in rows:
+            # Find all cells in the row
+            cells = row.find_elements(By.TAG_NAME, "td")
+            if len(cells) <= 9:
+                continue
+            # Check if last element contains text 'Pending Payment'
+            # cell contains: invoice number, vendor name, address, city, postal code, amount, currency, date received, cost center, status
+            status_text = cells[9].text.strip()
+            if status_text == "Pending Payment" and index < 40:
+                raise PendingPaymentError(results["account_number"])
+            # Check first two asserted invoices, check if they haven't been paid for a long time
+            elif status_text == "Asserted":
+                asserted_invoice_rows.append(cells)
+                if Global_variables.is_period_validation_needed and not is_period_checked and months_since_invoice(cells[0].text.strip()) >= 5:
+                    raise UnsaveableError(results["account_number"], "This account haven't been paid for a long time")
+                is_period_checked = True
+
+            invoice_number_text = cells[0].text.strip()
+            if invoice_number_text.replace("-", "").replace(' ', '') == results["account_number"].replace("-", "").replace(' ', '') + convert_month_abbr(results["suggested_file_name"][-7:-4]) + results["suggested_file_name"][-2:]\
+                    and status_text != 'Cancelled':
+                raise UnsaveableError(results['account_number'], f"{results['suggested_file_name']} is already exists")
+            index += 1
+
+        validate_invoice_amount(results, asserted_invoice_rows)
     finally:
         if quit_after:
             driver.quit()
