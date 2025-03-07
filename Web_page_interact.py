@@ -22,7 +22,7 @@ from VendorInvoicesExtraction.hydro_one import parse_hydro_one_bill
 from VendorInvoicesExtraction.toronto_hydro_scan import parse_toronto_hydro_bill
 from VendorInvoicesExtraction.welland_scan import parse_welland_bill
 from scan_helper import find_file_with_substring, self_check, copy_as_pdf_in_original_and_destination, convert_to_float, \
-    calculate_fiscal_year, months_to_next_fiscal_period, months_since_invoice
+    calculate_fiscal_year, months_to_next_fiscal_period, months_since_invoice, parse_invoice_date
 
 TARGET_URL = "https://pps.mto.ad.gov.on.ca/Home.aspx"
 
@@ -249,7 +249,7 @@ def pps_single_invoice_input(results, driver=None) -> int:
         login(driver)
 
     try:
-        # 8. Now that you’re logged in, navigate to your actual target URL
+        # 8. Now that you're logged in, navigate to your actual target URL
         driver.get(TARGET_URL)
 
         # 9. At this point, you should be in your authenticated session.
@@ -336,6 +336,7 @@ def pps_single_invoice_input(results, driver=None) -> int:
             if len(cells) <= 9:
                 continue
             # Check if last element contains text 'Pending Payment'
+            # cell contains: invoice number, vendor name, address, city, postal code, amount, currency, date received, cost center, status
             status_text = cells[9].text.strip()
             if status_text == "Pending Payment" and index < 40:
                 raise PendingPaymentError(results["account_number"])
@@ -351,6 +352,8 @@ def pps_single_invoice_input(results, driver=None) -> int:
                     and status_text != 'Cancelled':
                 raise UnsaveableError(results['account_number'], f"{results['suggested_file_name']} is already exists")
             index += 1
+
+        validate_invoice_amount(results, asserted_invoice_rows)
 
         # Check if enough funding in account
         indicator = 2
@@ -668,7 +671,7 @@ def check_and_request_funding(driver, results) -> bool:
 
     # Calculate the approximate amount needed
     approximate_amount_needed = round((((convert_to_float(results['amount_due']) - convert_to_float(results['balance_forward']))
-                                 * max(min(months_to_next_fiscal_period(results['period_start_date']), 1), 6)) - remaining_funding +
+                                 * min(max(months_to_next_fiscal_period(results['period_start_date']), 1), 6)) - remaining_funding +
                                  convert_to_float(results['balance_forward']))+1.0, 0)
     print(f"amount_due: {results['amount_due']}")
     print(f"balance_forward: {str(results['balance_forward'])}")
@@ -723,6 +726,106 @@ def check_and_request_funding(driver, results) -> bool:
 
     return True
 
+def validate_invoice_amount(result, asserted_invoice_rows):
+    """
+    Validates the current invoice amount against historical data.
+    Checks for balance forward and significant amount deviations.
+    
+    Args:
+        result (dict): Current invoice data containing 'suggested_file_name' and 'amount_due'
+        asserted_invoice_rows (list): List of previous invoice records
+        
+    Raises:
+        UnsavableError: If the invoice amount is significantly higher than historical average
+    """
+    if not asserted_invoice_rows:
+        return  # No historical data to compare against
+        
+    # Get current invoice date
+    current_year, current_month = parse_invoice_date(result['suggested_file_name'])
+    
+    # Find the latest invoice date from historical data
+    latest_date = None
+    latest_invoice = None
+    for row in asserted_invoice_rows:
+        try:
+            year, month = parse_invoice_date(row['invoice_number'])
+            if latest_date is None or (year > latest_date[0] or 
+                (year == latest_date[0] and month > latest_date[1])):
+                latest_date = (year, month)
+                latest_invoice = row
+        except ValueError:
+            continue  # Skip invalid invoice numbers
+            
+    if not latest_invoice:
+        return  # No valid historical invoices found
+        
+    # Check for balance forward
+    current_invoice_weight = 1
+    months_diff = (current_year - latest_date[0]) * 12 + (current_month - latest_date[1])
+    if months_diff > 1:
+        current_invoice_weight = months_diff
+        print(f"Warning: {months_diff} months gap detected between invoices. "
+              f"Current: {current_month}/{current_year}, "
+              f"Latest: {latest_date[1]}/{latest_date[0]}")
+    
+    # Calculate weighted average of last 6 months
+    valid_invoices = []
+    for row in asserted_invoice_rows:
+        try:
+            year, month = parse_invoice_date(row[0])
+            amount = convert_to_float(row[5])
+            if amount is not None:
+                valid_invoices.append({
+                    'year': year,
+                    'month': month,
+                    'amount': amount
+                })
+        except (ValueError, TypeError):
+            continue
+    
+    if not valid_invoices:
+        return  # No valid historical amounts to compare against
+    
+    # Sort invoices by date
+    valid_invoices.sort(key=lambda x: (x['year'], x['month']))
+    
+    # Take last 6 invoices
+    if len(valid_invoices) > 6:
+        valid_invoices = valid_invoices[-6:]
+    
+    # Calculate weights based on gaps between invoices
+    weighted_amounts = []
+    for i in range(len(valid_invoices)):
+        current = valid_invoices[i]
+        if i == 0:
+            weight = 1
+        else:
+            # For other invoices, check gap with the previous invoice
+            prev_invoice = valid_invoices[i - 1]
+            months_from_prev = (current['year'] - prev_invoice['year']) * 12 + (current['month'] - prev_invoice['month'])
+            weight = max(1, months_from_prev)  # Weight is at least 1
+            
+        weighted_amounts.append((current['amount'], weight))
+    
+    # Calculate weighted average
+    total_weight = sum(weight for _, weight in weighted_amounts)
+    weighted_sum = sum(amount * weight for amount, weight in weighted_amounts)
+    avg_amount = weighted_sum / total_weight if total_weight > 0 else 0
+    
+    current_amount = convert_to_float(result['amount_due'])
+    
+    if current_amount is None:
+        return  # Current amount is invalid
+        
+    # Check if current amount is significantly higher than average
+    if (current_amount / current_invoice_weight) > avg_amount * Global_variables.average_multiple_threshold:
+        raise UnsaveableError(result['account_number'],
+            f"Current invoice amount (${current_amount:.2f}) is more than "
+            f"{Global_variables.average_multiple_threshold}x the weighted average "
+            f"historical amount (${avg_amount:.2f})"
+        )
+
 def tester_function(results, driver=None):
 
     # 1. Launch browser (make sure you have installed ChromeDriver or another WebDriver)
@@ -733,7 +836,7 @@ def tester_function(results, driver=None):
         login(driver)
 
     try:
-        # 8. Now that you’re logged in, navigate to your actual target URL
+        # 8. Now that you're logged in, navigate to your actual target URL
         driver.get(TARGET_URL)
 
         # 9. At this point, you should be in your authenticated session.
