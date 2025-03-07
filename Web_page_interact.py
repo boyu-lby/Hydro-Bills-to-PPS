@@ -11,12 +11,14 @@ from Excel_helper import read_column_values, populate_invoice_numbers, delete_ce
     insert_tuples_in_excel, read_cell_content_from_first_two_col
 from OCR_helper import convert_month_abbr, get_today_date
 from VendorInvoicesExtraction.NPE import parse_NPE_bill
+from VendorInvoicesExtraction.NTP import parse_NTP_bill
 from VendorInvoicesExtraction.alectra_scan import parse_alectra_bill
 from VendorInvoicesExtraction.burlington_hydro_scan import parse_burlington_hydro_bill
 from CustomizedExceptions import RequestApprovalError, InvoiceScanError, AmountError, PendingPaymentError, AccountNumberError, ExtractedDataUnmatchError, UnsaveableError
 from VendorInvoicesExtraction.elexicon import parse_elexicon_bill
 from VendorInvoicesExtraction.fortis_scan import parse_fortis_bill
 from VendorInvoicesExtraction.grimsby import parse_grimsby_bill
+from VendorInvoicesExtraction.hydro_one import parse_hydro_one_bill
 from VendorInvoicesExtraction.toronto_hydro_scan import parse_toronto_hydro_bill
 from VendorInvoicesExtraction.welland_scan import parse_welland_bill
 from scan_helper import find_file_with_substring, self_check, copy_as_pdf_in_original_and_destination, convert_to_float, \
@@ -28,6 +30,10 @@ def login(driver):
     try:
         with open(Global_variables.configuration_file_path, 'r') as f:
             lines = f.readlines()
+            if len(lines) > 0:
+                ONTARIO_EMAIL = (lines[0].strip() if len(lines) > 0 else "")
+            if len(lines) > 1:
+                ONTARIO_PASSWORD = (lines[1].strip() if len(lines) > 1 else "")
             if len(lines) > 3:
                 time_interval_data = lines[3].strip().split(',')
                 if len(time_interval_data) == 2:
@@ -143,8 +149,14 @@ def pps_multiple_invoices_input(invoices_todo_lst):
                 results = parse_elexicon_bill(pdf_file_path)
             elif invoice[1] == "Fortis":
                 results = parse_fortis_bill(pdf_file_path)
+            elif invoice[1] == "Grimsby":
+                results = parse_grimsby_bill(pdf_file_path)
+            elif invoice[1] == "Hydro One":
+                results = parse_hydro_one_bill(pdf_file_path)
             elif invoice[1] == "NPE":
                 results = parse_NPE_bill(pdf_file_path)
+            elif invoice[1] == "NTP":
+                results = parse_NTP_bill(pdf_file_path)
             elif invoice[1] == "Toronto Hydro":
                 results = parse_toronto_hydro_bill(pdf_file_path)
             elif invoice[1] == "Welland":
@@ -199,7 +211,7 @@ def pps_multiple_invoices_input(invoices_todo_lst):
 
         except Exception as e:
             insert_tuples_in_excel(Global_variables.failed_invoices_excel_path,
-            "Sheet1", [(invoice[0], type(e).__name__)])
+            "Sheet1", [(invoice[0], "Please report this problem to the developer, " + type(e).__name__)])
             print(f"{type(e).__name__}: {invoice[0]}")
             print(str(e))
             continue
@@ -226,7 +238,7 @@ def pps_single_invoice_input(results, driver=None) -> int:
     :return: 1 indicates requested funding, 2 indicates requested payment approval
     """
     # Check if amount is greater that the maximum amount threshold
-    if results["amount_due"] > Global_variables.maximum_payment_amount:
+    if convert_to_float(results["amount_due"]) > Global_variables.maximum_payment_amount:
         raise UnsaveableError(results['account_number'], "Exceeds maximum amount threshold")
 
     # 1. Launch browser (make sure you have installed ChromeDriver or another WebDriver)
@@ -656,8 +668,8 @@ def check_and_request_funding(driver, results) -> bool:
 
     # Calculate the approximate amount needed
     approximate_amount_needed = round((((convert_to_float(results['amount_due']) - convert_to_float(results['balance_forward']))
-                                 * max(months_to_next_fiscal_period(results['statement_date']), 1)) - remaining_funding +
-                                 convert_to_float(results['balance_forward']))+1, 0)
+                                 * max(min(months_to_next_fiscal_period(results['period_start_date']), 1), 6)) - remaining_funding +
+                                 convert_to_float(results['balance_forward']))+1.0, 0)
     print(f"amount_due: {results['amount_due']}")
     print(f"balance_forward: {str(results['balance_forward'])}")
     print(f"approximate_amount_needed: {str(approximate_amount_needed)}")

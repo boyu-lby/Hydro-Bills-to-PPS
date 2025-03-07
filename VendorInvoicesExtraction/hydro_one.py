@@ -45,7 +45,7 @@ def parse_hydro_one_bill(pdf_path):
     print(text)
 
     # 1) Account Number
-    match = re.search(r"Your account number is:\s*((?:\d\s*)*)", text, re.IGNORECASE)
+    match = re.search(r"Your account number[ is]?:\s*((?:\d\s*)*)", text, re.IGNORECASE)
     if match:
         extracted_data["account_number"] = match.group(1).upper().replace(' ', '').replace('\n', '')
 
@@ -53,6 +53,10 @@ def parse_hydro_one_bill(pdf_path):
     match = re.search(r'This statement is issued on:\s*([A-Za-z]{3,10}\s*\d{1,2},\s*\d{4})', text, re.IGNORECASE)
     if match:
         extracted_data["statement_date"] = convert_date_from_full(match.group(1).upper())
+    else:
+        match = re.search(r'Billing date:\s*([A-Za-z]{3,10}\s*\d{1,2},\s*\d{4})', text, re.IGNORECASE)
+        if match:
+            extracted_data["statement_date"] = convert_date_from_full(match.group(1).upper())
 
     # 3) Amount Due
     match = re.search(r'Total amount you owe\s*\$?(\d{1,3}(?:,\d{3})*\.\d{1,2})', text, re.IGNORECASE)

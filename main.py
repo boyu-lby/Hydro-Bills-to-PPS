@@ -13,6 +13,7 @@ from Model import Model
 from pynput.mouse import Controller as MouseController, Button
 
 from VendorInvoicesExtraction.NTP import parse_NTP_bill
+from VendorInvoicesExtraction.burlington_hydro_scan import parse_burlington_hydro_bill
 from VendorInvoicesExtraction.hydro_one import parse_hydro_one_bill
 from scan_helper import find_file_with_substring, copy_as_pdf_in_original_and_destination, self_check, \
     months_since_invoice
@@ -30,10 +31,11 @@ def keep_active():
 
 def print_results(invoice):
     pdf_file_path = find_file_with_substring(r"C:\Users\LiBo3\Downloads", invoice)
-    results = parse_NTP_bill(pdf_file_path)
+    results = parse_hydro_one_bill(pdf_file_path)
     for key, value in results.items():
         print(f"{key}: {value}")
     print(self_check(results))
+
 
 def run_app():
     app = QApplication(sys.argv)
@@ -47,4 +49,4 @@ def run_app():
     sys.exit(app.exec_())
 
 if __name__ == "__main__":
-    run_app()
+    print_results('200295488946')

@@ -796,7 +796,7 @@ class MainWindow(QMainWindow):
         right_layout.setContentsMargins(20, 20, 20, 20)
 
         # Draggable labels
-        texts = ["", "Alectra", "Burlington Hydro", "Elexicon", "Fortis", "Grimsby", "NPE", "Toronto Hydro", "Welland"]
+        texts = ["", "Alectra", "Burlington Hydro", "Elexicon", "Fortis", "Grimsby", "Hydro One", "NPE", "NTP", "Toronto Hydro", "Welland"]
         for t in texts:
             lbl = DraggableLabel(t)
             right_layout.addWidget(lbl)
