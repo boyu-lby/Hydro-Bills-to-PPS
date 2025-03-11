@@ -5,7 +5,7 @@ import re
 import shutil
 import Global_variables
 
-from CustomizedExceptions import InvoicePDFNotFoundError, AmountError, NegativeAmountError, UnsavableError
+from CustomizedExceptions import InvoicePDFNotFoundError, AmountError, NegativeAmountError, UnsaveableError
 
 
 def convert_to_float(amount_str) -> float:
@@ -190,14 +190,16 @@ def self_check(results):
     :param results: the data scanned from invoice
     :return: None
     """
+    if convert_to_float(results['amount_due']) <= 0:
+        raise UnsaveableError(results['account_number'], "This account is in credit")
     if results["invoice_subtotal"] != round(float(results["Late Payment Charge"]) + float(results["ontario_electricity_rebate"]) + \
         float(results["balance_forward"]) + float(results["total_electricity_charges"]), 2):
-        raise AmountError(results['account_number'])
+        raise UnsaveableError(results['account_number'], "This invoice has unbalance amount. This error might happens when selected wrong vendor name or vendor has updated the format of invoice, please contact the developer for the second case")
     for data in results.values():
         if data is None:
             raise AmountError(results['account_number'])
-    if convert_to_float(results['amount_due']) <= 0:
-        raise NegativeAmountError(results['account_number'])
+        elif isinstance(data, float):
+            data = round(data, 2)
     return True
 
 def calculate_fiscal_year(date):

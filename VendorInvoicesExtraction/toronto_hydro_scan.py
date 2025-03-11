@@ -86,6 +86,7 @@ def parse_toronto_hydro_bill(pdf_path):
         electricity_sum += float(amount_val)
     if electricity_sum != 0:
         extracted_data["total_electricity_charges"] = electricity_sum
+    extracted_data["total_electricity_charges"] = round(extracted_data["total_electricity_charges"], 2)
 
     # 5) H.S.T.
     # Example snippet: "H.S.T. 10.75" or "H.S.T. (H.S.T. Registration 895...) 10.75"

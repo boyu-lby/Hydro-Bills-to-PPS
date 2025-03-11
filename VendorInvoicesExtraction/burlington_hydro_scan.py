@@ -41,6 +41,18 @@ def parse_burlington_hydro_bill(pdf_path):
         for page in pdf.pages:
             text += page.extract_text() + "\n"
 
+    def check_for_cr(amount, cr=None):
+        # The numeric part (e.g. '19,299.99')
+        amount_str = amount
+        # Remove commas and convert to float
+        amount_val = convert_to_float(amount_str.replace(',', ''))
+
+        # Check if ' CR' was captured
+        if cr is not None:
+            # If ' CR' is present, multiply by -1
+            amount_val *= -1
+        return amount_val
+
     # 1) Account Number
     # Example snippet: "Account Number: 106703-0001284"
     match = re.search(r"Account\s*Number:\s*(\d{6}-\d{7})", text, re.IGNORECASE)
@@ -56,9 +68,10 @@ def parse_burlington_hydro_bill(pdf_path):
 
     # 3) Amount Due
     # Example snippet: "Amount Due $168.60"
-    match = re.search(r'TOTAL\s*AMOUNT\s*DUE\s*[A-Za-z]{3}\s*\d{1,2},\s*\d{4}\s*\$(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)', text, re.IGNORECASE)
+    match = re.search(r'TOTAL\s*AMOUNT\s*DUE\s*[A-Za-z]{3}\s*\d{1,2},\s*\d{4}\s*\$(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)(\s*CR)?', text, re.IGNORECASE)
     if match:
-        extracted_data["amount_due"] = match.group(1)
+        amount_val = check_for_cr(match.group(1), match.group(2))
+        extracted_data["amount_due"] = amount_val
 
     # 5) Ontario Electricity Rebate
     # Example snippet: "Ontario Electricity Rebate 10.84 CR" OR "Monthly Deposit Interest 33.38CR"
@@ -93,17 +106,6 @@ def parse_burlington_hydro_bill(pdf_path):
 
     # 7) Balance Forward
     # Example snippet: "Last Statement Amount $1,402.18"
-    def check_for_cr(amount, cr=None):
-        # The numeric part (e.g. '19,299.99')
-        amount_str = amount
-        # Remove commas and convert to float
-        amount_val = convert_to_float(amount_str.replace(',', ''))
-
-        # Check if ' CR' was captured
-        if cr is not None:
-            # If ' CR' is present, multiply by -1
-            amount_val *= -1
-        return amount_val
 
     match = re.search(r'Last\s*Statement\s*Amount\s*\$(\d{1,3}(?:,\d{3})*\.\d{1,2})(\s*CR)?', text, re.IGNORECASE)
     if match:

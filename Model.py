@@ -50,6 +50,8 @@ class Model(QObject):
     def process_all_todo_invoices(self):
         print(self.todo_invoices)
 
+        # Save configuration
+        self.save_config()
         todo_invoices = []
         for invoice in self.todo_invoices.items():
             if invoice[1][1] is None or invoice[1][1] in ("", False):
@@ -71,6 +73,32 @@ class Model(QObject):
         for todo_invoice in todo_invoices:
             self.todo_invoices.update({todo_invoice[0]:[("" if todo_invoice[1] is None else todo_invoice[1]), False]})
         self.todoInvoicesChanged.emit()
+
+    def save_config(self):
+        try:
+            with open(Global_variables.configuration_file_path, 'r') as f:
+                lines = f.readlines()
+                if len(lines) > 0:
+                    Global_variables.ontario_email = (lines[0].strip() if len(lines) > 0 else "")
+                if len(lines) > 1:
+                    Global_variables.ontario_password = (lines[1].strip() if len(lines) > 1 else "")
+                if len(lines) > 2:
+                    Global_variables.todo_invoices_dir_path = (lines[2].strip() if len(lines) > 1 else "")
+                if len(lines) > 3:
+                    time_interval_data = lines[3].strip().split(',')
+                    if len(time_interval_data) == 2:
+                        Global_variables.is_period_validation_needed = time_interval_data[0]
+                        Global_variables.period_need_validate = int(time_interval_data[1])
+                if len(lines) > 4:
+                    max_payment_data = lines[4].strip().split(',')
+                    if len(max_payment_data) == 2:
+                        Global_variables.is_max_payment_validation_needed = max_payment_data[0]
+                        Global_variables.max_payment_need_validate = int(max_payment_data[1])
+                return lines[2].strip() if len(lines) > 2 else ""
+        except FileNotFoundError:
+            print(f"Warning", "Configuration file not found. A new one will be created on save.")
+        except Exception as e:
+            print(f"Error", f"Failed to load config: {str(e)}")
 
     def get_todo_invoices(self):
         return self.todo_invoices.items()

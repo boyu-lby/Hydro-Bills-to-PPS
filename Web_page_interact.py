@@ -10,6 +10,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from Excel_helper import read_column_values, populate_invoice_numbers, delete_cell_content_if_matches, \
     insert_tuples_in_excel, read_cell_content_from_first_two_col
 from OCR_helper import convert_month_abbr, get_today_date
+from VendorInvoicesExtraction.Get_invoice_extraction import get_invoice_extraction_function
 from VendorInvoicesExtraction.NPE import parse_NPE_bill
 from VendorInvoicesExtraction.NTP import parse_NTP_bill
 from VendorInvoicesExtraction.alectra_scan import parse_alectra_bill
@@ -27,27 +28,8 @@ from scan_helper import find_file_with_substring, self_check, copy_as_pdf_in_ori
 TARGET_URL = "https://pps.mto.ad.gov.on.ca/Home.aspx"
 
 def login(driver):
-    try:
-        with open(Global_variables.configuration_file_path, 'r') as f:
-            lines = f.readlines()
-            if len(lines) > 0:
-                ONTARIO_EMAIL = (lines[0].strip() if len(lines) > 0 else "")
-            if len(lines) > 1:
-                ONTARIO_PASSWORD = (lines[1].strip() if len(lines) > 1 else "")
-            if len(lines) > 3:
-                time_interval_data = lines[3].strip().split(',')
-                if len(time_interval_data) == 2:
-                    Global_variables.is_period_validation_needed = time_interval_data[0]
-                    Global_variables.period_need_validate = int(time_interval_data[1])
-            if len(lines) > 4:
-                max_payment_data = lines[4].strip().split(',')
-                if len(max_payment_data) == 2:
-                    Global_variables.is_max_payment_validation_needed = max_payment_data[0]
-                    Global_variables.max_payment_need_validate = int(max_payment_data[1])
-    except FileNotFoundError:
-        print(f"Warning","Configuration file not found. A new one will be created on save.")
-    except Exception as e:
-        print(f"Error", f"Failed to load config: {str(e)}")
+    ONTARIO_EMAIL = Global_variables.ontario_email
+    ONTARIO_PASSWORD = Global_variables.ontario_password
 
     # 2. Navigate to Microsoft login page.
     #    Often, just going to your target URL will redirect you to the MS login page,
@@ -141,29 +123,9 @@ def pps_multiple_invoices_input(invoices_todo_lst):
             # Scan the invoice PDF and extract the data
             pdf_file_path = find_file_with_substring(get_invoice_dir_path(), str(invoice[0]))
             # Use right invoice scanning method
-            if invoice[1] == "Alectra":
-                results = parse_alectra_bill(pdf_file_path)
-            elif invoice[1] == "Burlington Hydro":
-                results = parse_burlington_hydro_bill(pdf_file_path)
-            elif invoice[1] == "Elexicon":
-                results = parse_elexicon_bill(pdf_file_path)
-            elif invoice[1] == "Fortis":
-                results = parse_fortis_bill(pdf_file_path)
-            elif invoice[1] == "Grimsby":
-                results = parse_grimsby_bill(pdf_file_path)
-            elif invoice[1] == "Hydro One":
-                results = parse_hydro_one_bill(pdf_file_path)
-            elif invoice[1] == "NPE":
-                results = parse_NPE_bill(pdf_file_path)
-            elif invoice[1] == "NTP":
-                results = parse_NTP_bill(pdf_file_path)
-            elif invoice[1] == "Toronto Hydro":
-                results = parse_toronto_hydro_bill(pdf_file_path)
-            elif invoice[1] == "Welland":
-                results = parse_welland_bill(pdf_file_path)
-            elif invoice[1] == "Grimsby":
-                results = parse_grimsby_bill(pdf_file_path)
-            else:
+            scanning_method = get_invoice_extraction_function(invoice[1])
+            results = scanning_method(pdf_file_path)
+            if results is None:
                 print(f"Invalid Vendor Name: {invoice[1]}")
                 raise UnsaveableError(invoice[0], 'Invalid vendor name')
 
@@ -171,7 +133,7 @@ def pps_multiple_invoices_input(invoices_todo_lst):
                 print(f"{key}: {value}")
 
             # Check invoice[0] (account number) match the account number in PDF
-            if invoice[0] not in results['account_number']:
+            if invoice[0].replace('-', '') not in results['account_number'].replace('-', '') and results['account_number'].replace('-', '') not in invoice[0].replace('-', ''):
                 raise UnsaveableError(invoice[0], f"The data in file named '{invoice[0]}' contains the data of '{results['account_number']}'")
 
             # Check data is reasonable or not
@@ -749,7 +711,7 @@ def validate_invoice_amount(result, asserted_invoice_rows):
     latest_invoice = None
     for row in asserted_invoice_rows:
         try:
-            year, month = parse_invoice_date(row['invoice_number'])
+            year, month = parse_invoice_date(row[0].text.strip())
             if latest_date is None or (year > latest_date[0] or 
                 (year == latest_date[0] and month > latest_date[1])):
                 latest_date = (year, month)
@@ -773,8 +735,8 @@ def validate_invoice_amount(result, asserted_invoice_rows):
     valid_invoices = []
     for row in asserted_invoice_rows:
         try:
-            year, month = parse_invoice_date(row[0])
-            amount = convert_to_float(row[5])
+            year, month = parse_invoice_date(row[0].text.strip())
+            amount = convert_to_float(row[5].text.strip())
             if amount is not None:
                 valid_invoices.append({
                     'year': year,
