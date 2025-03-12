@@ -4,3 +4,4 @@ Temp Hydro Invoices/
 build/
 dist/
 *.exe
+Configuration.txt
