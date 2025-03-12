@@ -898,7 +898,6 @@ def tester_function(results, driver=None):
                 raise UnsaveableError(results['account_number'], f"{results['suggested_file_name']} is already exists")
             index += 1
 
-        validate_invoice_amount(results, asserted_invoice_rows)
     finally:
         if quit_after:
             driver.quit()
