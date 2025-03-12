@@ -42,29 +42,40 @@ class ConfigurationDialog(QDialog):
         time_interval_layout = QHBoxLayout()
         time_interval_label = QLabel("Time Interval Check:")
         self.time_interval_checkbox = QCheckBox()
-        self.time_interval_checkbox.stateChanged.connect(self.toggle_time_interval)
+        self.time_interval_checkbox.stateChanged.connect(lambda: self.on_checkbox_state_changed(self.time_interval_checkbox, self.time_interval_input))
         time_interval_layout.addWidget(time_interval_label)
         time_interval_layout.addWidget(self.time_interval_checkbox)
         layout.addLayout(time_interval_layout)
 
         self.time_interval_input = QLineEdit()
         self.time_interval_input.setValidator(QIntValidator(1, 999999))  # Only allow positive integers
-        self.time_interval_input.setEnabled(False)  # Initially disabled
         layout.addWidget(self.time_interval_input)
 
         # Maximum Payment Amount Threshold Section
         max_payment_layout = QHBoxLayout()
         max_payment_label = QLabel("Maximum Payment Amount:")
         self.max_payment_checkbox = QCheckBox()
-        self.max_payment_checkbox.stateChanged.connect(self.toggle_max_payment)
+        self.max_payment_checkbox.stateChanged.connect(lambda: self.on_checkbox_state_changed(self.max_payment_checkbox, self.max_payment_input))
         max_payment_layout.addWidget(max_payment_label)
         max_payment_layout.addWidget(self.max_payment_checkbox)
         layout.addLayout(max_payment_layout)
 
         self.max_payment_input = QLineEdit()
         self.max_payment_input.setValidator(QIntValidator(1, 999999))  # Only allow positive integers
-        self.max_payment_input.setEnabled(False)  # Initially disabled
         layout.addWidget(self.max_payment_input)
+
+        # Abnormal Amount Detection Section
+        abnormal_amount_layout = QHBoxLayout()
+        abnormal_amount_label = QLabel("Abnormal Amount Detection:")
+        self.abnormal_amount_checkbox = QCheckBox()
+        self.abnormal_amount_checkbox.stateChanged.connect(lambda: self.on_checkbox_state_changed(self.abnormal_amount_checkbox, self.abnormal_amount_input))
+        abnormal_amount_layout.addWidget(abnormal_amount_label)
+        abnormal_amount_layout.addWidget(self.abnormal_amount_checkbox)
+        layout.addLayout(abnormal_amount_layout)
+
+        self.abnormal_amount_input = QLineEdit()
+        self.abnormal_amount_input.setValidator(QIntValidator(1, 999999))  # Only allow positive integers
+        layout.addWidget(self.abnormal_amount_input)
 
         # Save Button
         save_btn = QPushButton("Save & Close")
@@ -84,6 +95,17 @@ class ConfigurationDialog(QDialog):
         layout.addWidget(save_btn)
 
         self.setLayout(layout)
+        
+        # Initialize input fields state
+        self.on_checkbox_state_changed(self.time_interval_checkbox, self.time_interval_input)
+        self.on_checkbox_state_changed(self.max_payment_checkbox, self.max_payment_input)
+        self.on_checkbox_state_changed(self.abnormal_amount_checkbox, self.abnormal_amount_input)
+
+    def on_checkbox_state_changed(self, checkbox, input_field):
+        input_field.setEnabled(checkbox.isChecked())
+        if not checkbox.isChecked():
+            input_field.clear()
+        input_field.setStyleSheet("QLineEdit { background-color: %s }" % ("#FFFFFF" if checkbox.isChecked() else "#F0F0F0"))
 
     def load_config(self):
         try:
@@ -100,17 +122,22 @@ class ConfigurationDialog(QDialog):
                     if len(time_interval_data) == 2:
                         self.time_interval_checkbox.setChecked(time_interval_data[0] == 'True')
                         self.time_interval_input.setText(time_interval_data[1])
-                        self.toggle_time_interval(self.time_interval_checkbox.checkState())
                         Global_variables.is_period_validation_needed = self.time_interval_checkbox.isChecked()
-                        Global_variables.period_need_validate = int(self.time_interval_input.text())
+                        Global_variables.period_need_validate = int(self.time_interval_input.text()) if time_interval_data[1] else 0
                 if len(lines) > 4:
                     max_payment_data = lines[4].strip().split(',')
                     if len(max_payment_data) == 2:
                         self.max_payment_checkbox.setChecked(max_payment_data[0] == 'True')
                         self.max_payment_input.setText(max_payment_data[1])
-                        self.toggle_max_payment(self.max_payment_checkbox.checkState())
                         Global_variables.is_max_payment_validation_needed = self.max_payment_checkbox.isChecked()
-                        Global_variables.max_payment_need_validate = int(self.max_payment_input.text())
+                        Global_variables.max_payment_need_validate = int(self.max_payment_input.text()) if max_payment_data[1] else 0
+                if len(lines) > 5:
+                    abnormal_amount_data = lines[5].strip().split(',')
+                    if len(abnormal_amount_data) == 2:
+                        self.abnormal_amount_checkbox.setChecked(abnormal_amount_data[0] == 'True')
+                        self.abnormal_amount_input.setText(abnormal_amount_data[1])
+                        Global_variables.is_abnormal_amount_validation_needed = self.abnormal_amount_checkbox.isChecked()
+                        Global_variables.average_multiple_threshold = int(self.abnormal_amount_input.text()) if abnormal_amount_data[1] else 3
 
         except FileNotFoundError:
             QMessageBox.warning(self, "Warning",
@@ -124,22 +151,22 @@ class ConfigurationDialog(QDialog):
                 f.write(f"{self.email_input.text()}\n")
                 f.write(f"{self.password_input.text()}\n")
                 f.write(f"{self.path_input.text()}\n")
+                
                 # Save time interval check state and value
-                time_interval_value = self.time_interval_input.text() if self.time_interval_checkbox.isChecked() else ""
-                f.write(f"{self.time_interval_checkbox.isChecked()},{time_interval_value}\n")
+                time_interval_value = self.time_interval_input.text().strip()
+                is_time_interval_valid = self.time_interval_checkbox.isChecked() and bool(time_interval_value)
+                f.write(f"{is_time_interval_valid},{time_interval_value if is_time_interval_valid else ''}\n")
+                
                 # Save maximum payment amount state and value
-                max_payment_value = self.max_payment_input.text() if self.max_payment_checkbox.isChecked() else ""
-                f.write(f"{self.max_payment_checkbox.isChecked()},{max_payment_value}\n")
+                max_payment_value = self.max_payment_input.text().strip()
+                is_max_payment_valid = self.max_payment_checkbox.isChecked() and bool(max_payment_value)
+                f.write(f"{is_max_payment_valid},{max_payment_value if is_max_payment_valid else ''}\n")
+                
+                # Save abnormal amount detection state and value
+                abnormal_amount_value = self.abnormal_amount_input.text().strip()
+                is_abnormal_amount_valid = self.abnormal_amount_checkbox.isChecked() and bool(abnormal_amount_value)
+                f.write(f"{is_abnormal_amount_valid},{abnormal_amount_value if is_abnormal_amount_valid else ''}\n")
+                
             self.accept()
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to save config: {str(e)}")
-
-    def toggle_time_interval(self, state):
-        self.time_interval_input.setEnabled(state == Qt.Checked)
-        if state != Qt.Checked:
-            self.time_interval_input.clear()
-
-    def toggle_max_payment(self, state):
-        self.max_payment_input.setEnabled(state == Qt.Checked)
-        if state != Qt.Checked:
-            self.max_payment_input.clear()

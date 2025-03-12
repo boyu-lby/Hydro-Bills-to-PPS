@@ -50,4 +50,4 @@ def run_app():
     sys.exit(app.exec_())
 
 if __name__ == "__main__":
-    invoice_pdf_scan_and_rename(r"C:\Users\LiBo3\OneDrive - Government of Ontario\Desktop\Invoice_023146-0048043_0003645980_2025-03-04.pdf", "Burlington")
+    run_app()

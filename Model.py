@@ -94,7 +94,11 @@ class Model(QObject):
                     if len(max_payment_data) == 2:
                         Global_variables.is_max_payment_validation_needed = max_payment_data[0]
                         Global_variables.max_payment_need_validate = int(max_payment_data[1])
-                return lines[2].strip() if len(lines) > 2 else ""
+                if len(lines) > 5:
+                    abnormal_amount_data = lines[5].strip().split(',')
+                    if len(abnormal_amount_data) == 2:
+                        Global_variables.is_abnormal_amount_validation_needed = abnormal_amount_data[0]
+                        Global_variables.average_multiple_threshold = int(abnormal_amount_data[1])
         except FileNotFoundError:
             print(f"Warning", "Configuration file not found. A new one will be created on save.")
         except Exception as e:

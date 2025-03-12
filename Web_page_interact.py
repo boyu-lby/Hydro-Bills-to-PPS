@@ -315,7 +315,9 @@ def pps_single_invoice_input(results, driver=None) -> int:
                 raise UnsaveableError(results['account_number'], f"{results['suggested_file_name']} is already exists")
             index += 1
 
-        validate_invoice_amount(results, asserted_invoice_rows)
+        # Check if the invoice amount is abnormally large
+        if Global_variables.is_abnormal_amount_validation_needed:
+            validate_abnormally_large_amount(results, asserted_invoice_rows)
 
         # Check if enough funding in account
         indicator = 2
@@ -688,7 +690,7 @@ def check_and_request_funding(driver, results) -> bool:
 
     return True
 
-def validate_invoice_amount(result, asserted_invoice_rows):
+def validate_abnormally_large_amount(result, asserted_invoice_rows):
     """
     Validates the current invoice amount against historical data.
     Checks for balance forward and significant amount deviations.
