@@ -2,13 +2,15 @@ from PyQt5.QtCore import Qt, pyqtSignal, QObject
 
 from Excel_helper import insert_tuples_in_excel, read_column_values, clear_all, read_cell_content_from_first_two_col
 import Global_variables
+from Invoice_PDF_process import invoice_pdf_scan_and_rename
 from Web_page_interact import pps_multiple_invoices_input
 
 
 class Model(QObject):
     todoInvoicesChanged = pyqtSignal()
     left_section_data_ready = pyqtSignal(tuple)
-    notificationPromted = pyqtSignal(str)
+    mainWindowNotificationPromted = pyqtSignal(str)
+    renameWindowNotificationPromted = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -58,7 +60,7 @@ class Model(QObject):
                 continue
             todo_invoices.append([invoice[0], invoice[1][0]])
         if len(todo_invoices) == 0:
-            self.notificationPromted.emit("No Selected Invoices")
+            self.mainWindowNotificationPromted.emit("No Selected Invoices")
             return
         pps_multiple_invoices_input(todo_invoices)
         self.read_todo_invoices_from_excel()
@@ -73,6 +75,40 @@ class Model(QObject):
         for todo_invoice in todo_invoices:
             self.todo_invoices.update({todo_invoice[0]:[("" if todo_invoice[1] is None else todo_invoice[1]), False]})
         self.todoInvoicesChanged.emit()
+
+    def rename_files(self, file_paths: list[str], vendor: str):
+        success = []
+        fail = []
+        not_found = []
+        message = ""
+
+        for path in file_paths:
+            try:
+                isSuccess, name = invoice_pdf_scan_and_rename(path, vendor)
+                if isSuccess:
+                    success.append(name)
+                else:
+                    fail.append(name)
+            except FileNotFoundError as e:
+                not_found.append(path)
+
+        if success:
+            message += "Successfully renamed files: "
+            for name in success:
+                message += f"{name}, "
+            message = message[:-2] + "\n\n"
+        if fail:
+            message += "Files rename failed: "
+            for name in fail:
+                message += f"{name}, "
+            message = message[:-2] + "\n\n"
+        if not_found:
+            message += "Paths not found: "
+            for name in not_found:
+                message += f"{name}, "
+            message = message[:-2] + "\n"
+
+        self.mainWindowNotificationPromted.emit(message)
 
     def save_config(self):
         try:

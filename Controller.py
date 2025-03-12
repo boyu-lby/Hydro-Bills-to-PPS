@@ -1,5 +1,6 @@
 from Main_Window import MainWindow
 from Model import Model
+from PDF_Drop_Window import PDFDropDialog
 
 
 class Controller:
@@ -27,14 +28,16 @@ class Controller:
         self.view.middle_widget.textBarDeleted.connect(self.model.delete_todo_invoice)
         # When state of checkbox of todo_invoice in View, request Model to update it as well
         self.view.middle_widget.checkboxStateChanged.connect(self.model.update_invoice_checkbox_state)
-        # Left section update required signal, request Model to return data
+        # Left section update requires signal, request Model to return data
         self.view.left_section_update_required.connect(self.model.send_left_section_data)
         # When the Left section data is ready, update left section in View
         self.model.left_section_data_ready.connect(self.view.update_left_section)
         # When the invoice data in Model changed, refresh in View
         self.model.todoInvoicesChanged.connect(self.on_model_changed)
         # Send notification from Model to View
-        self.model.notificationPromted.connect(self.show_notification)
+        self.model.mainWindowNotificationPromted.connect(self.show_notification)
+
+        self.view.show_pdf_drop_dialog.connect(self.show_pdf_drop_dialog)
 
         # Read todoinvoices from Excel, and display on View
         self.model.read_todo_invoices_from_excel()
@@ -47,4 +50,10 @@ class Controller:
 
     def show_notification(self, message):
         self.view.middle_widget.expand_notification(message)
+
+    def show_pdf_drop_dialog(self):
+        dialog = PDFDropDialog(self.view)
+        self.model.renameWindowNotificationPromted.connect(dialog.expand_notification)
+        dialog.rename_button_clicked.connect(self.model.rename_files)
+        dialog.exec_()
 

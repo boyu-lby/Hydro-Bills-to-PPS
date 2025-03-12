@@ -509,7 +509,7 @@ class MiddleWidget(QWidget):
         main_layout.addWidget(input_bar)
 
         # -------------------------
-        # 3) Connect Global Drop
+        # 4) Connect Global Drop
         # -------------------------
         self.global_drop.dropped.connect(self.apply_to_all_bars)
         self.global_delete_btn.clicked.connect(self.clear_text_bars)
@@ -644,6 +644,7 @@ class MainWindow(QMainWindow):
     todoInvoicesSaveRequest = pyqtSignal()
     todoInvoicesProcessRequest = pyqtSignal()
     left_section_update_required = pyqtSignal()
+    show_pdf_drop_dialog = pyqtSignal()
 
     def __init__(self):
         super().__init__()
@@ -728,8 +729,6 @@ class MainWindow(QMainWindow):
                 background-color: #239B56;
             }
         """)
-        # Store PDF paths
-        self.pdf_paths = []
         # Connect rename files button
         self.rename_files_btn.clicked.connect(self.show_pdf_drop_dialog)
         config_help_layout.addWidget(self.rename_files_btn, stretch=1)
@@ -869,14 +868,6 @@ class MainWindow(QMainWindow):
     def show_config_dialog(self):
         dialog = ConfigurationDialog(self.config_path, self)
         dialog.exec_()
-
-    def show_pdf_drop_dialog(self):
-        dialog = PDFDropDialog(self)
-        dialog.pdf_paths_updated.connect(self.update_pdf_paths)
-        dialog.exec_()
-
-    def update_pdf_paths(self, paths):
-        self.pdf_paths = paths
 
     def _on_save_clicked(self):
         self.todoInvoicesSaveRequest.emit()

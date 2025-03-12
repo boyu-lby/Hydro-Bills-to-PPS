@@ -1,8 +1,8 @@
 from PyQt5.QtWidgets import (
-    QDialog, QVBoxLayout, QLabel, QPushButton, QListWidget, 
-    QMessageBox, QWidget, QHBoxLayout, QListWidgetItem
+    QDialog, QVBoxLayout, QLabel, QPushButton, QListWidget,
+    QMessageBox, QWidget, QHBoxLayout, QListWidgetItem, QComboBox, QScrollArea
 )
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import Qt, pyqtSignal, QPropertyAnimation, QEasingCurve
 from PyQt5.QtGui import QDragEnterEvent, QDropEvent
 
 class PDFListItemWidget(QWidget):
@@ -12,6 +12,7 @@ class PDFListItemWidget(QWidget):
         super().__init__(parent)
         self.pdf_path = pdf_path
         self.init_ui()
+        self.notification_expanded = False
 
     def init_ui(self):
         layout = QHBoxLayout()
@@ -49,7 +50,7 @@ class PDFListItemWidget(QWidget):
         self.setLayout(layout)
 
 class PDFDropDialog(QDialog):
-    pdf_paths_updated = pyqtSignal(list)  # Signal to emit when PDF paths are updated
+    rename_button_clicked = pyqtSignal(list, str) # Signal to emit when rename button is clicked
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -64,6 +65,44 @@ class PDFDropDialog(QDialog):
         layout = QVBoxLayout()
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(15)
+
+        # Notification section
+        self.notification_container = QWidget()
+        self.notification_container.setStyleSheet("""
+                            QWidget {
+                                background-color: #FCF3CF;
+                                border-bottom: 1px solid #F4D03F;
+                            }
+                        """)
+        self.notification_container.setMaximumHeight(0)
+        self.notification_container.setMinimumHeight(0)
+
+        notification_layout = QVBoxLayout(self.notification_container)
+        notification_layout.setContentsMargins(10, 5, 10, 5)
+
+        self.notification_label = QLabel()
+        self.notification_label.setStyleSheet("""
+                            QLabel {
+                                color: #7E5109;
+                                font: 10pt 'Arial';
+                                padding: 5px;
+                            }
+                        """)
+        self.notification_label.setWordWrap(True)
+
+        scroll = QScrollArea()
+        scroll.setWidget(self.notification_label)
+        scroll.setWidgetResizable(True)
+        scroll.setStyleSheet("border: none; background: transparent;")
+        notification_layout.addWidget(scroll)
+
+        layout.addWidget(self.notification_container)
+
+        # Vendor Dropdown Menu
+        self.vendor_menu = QComboBox()
+        self.vendor_menu.addItems(['Select Vendor', 'Alectra', 'Burlington', 'Elexicon', 'Fortis', 'Grimsby', 'Hydro One', 'NPE', 'NTP', 'Toronto Hydro', 'Welland'])
+        self.vendor_menu.currentTextChanged.connect(self.vendor_menu_changed)
+        layout.addWidget(self.vendor_menu)
 
         # Drop area label
         self.drop_label = QLabel("Drop PDF files here")
@@ -104,7 +143,7 @@ class PDFDropDialog(QDialog):
 
         # Rename button (formerly Clear button)
         rename_btn = QPushButton("Rename Files")
-        rename_btn.clicked.connect(self.clear_files)  # Keeping the same function for now
+        rename_btn.clicked.connect(self.rename_dropped_files)  # Keeping the same function for now
         rename_btn.setStyleSheet("""
             QPushButton {
                 background-color: #27AE60;
@@ -122,6 +161,9 @@ class PDFDropDialog(QDialog):
 
         self.setLayout(layout)
 
+    def vendor_menu_changed(self, text):
+        self.collapse_notification()
+
     def add_pdf_to_list(self, file_path):
         # Create list item and custom widget
         item = QListWidgetItem()
@@ -136,6 +178,7 @@ class PDFDropDialog(QDialog):
         self.file_list.setItemWidget(item, widget)
 
     def remove_pdf(self, file_path):
+        self.collapse_notification()
         # Remove from paths list
         if file_path in self.pdf_paths:
             self.pdf_paths.remove(file_path)
@@ -147,9 +190,6 @@ class PDFDropDialog(QDialog):
             if widget.pdf_path == file_path:
                 self.file_list.takeItem(i)
                 break
-                
-        # Emit updated paths
-        self.pdf_paths_updated.emit(self.pdf_paths)
 
     def dragEnterEvent(self, event: QDragEnterEvent):
         if event.mimeData().hasUrls():
@@ -166,12 +206,37 @@ class PDFDropDialog(QDialog):
                 if file_path not in self.pdf_paths:
                     self.pdf_paths.append(file_path)
                     self.add_pdf_to_list(file_path)
-        
-        # Emit signal with updated paths
-        self.pdf_paths_updated.emit(self.pdf_paths)
-        event.acceptProposedAction()
 
-    def clear_files(self):
-        self.pdf_paths.clear()
-        self.file_list.clear()
-        self.pdf_paths_updated.emit(self.pdf_paths) 
+    def rename_dropped_files(self):
+        self.collapse_notification()
+        if self.vendor_menu.currentText() == 'Select Vendor':
+            self.expand_notification("Please select a vendor")
+            return
+        if not self.pdf_paths:
+            return
+        self.rename_button_clicked.emit(self.pdf_paths, self.vendor_menu.currentText())
+        self.accept()
+
+    def expand_notification(self, message: str, duration_ms: int = 300):
+        """Expand notification section with animation"""
+        self.notification_label.setText(message)
+
+        self.anim = QPropertyAnimation(self.notification_container, b"maximumHeight")
+        self.anim.setDuration(duration_ms)
+        self.anim.setStartValue(self.notification_container.height())
+        self.anim.setEndValue(100)  # Adjust height as needed
+        self.anim.setEasingCurve(QEasingCurve.OutQuad)
+        self.anim.start()
+
+        self.notification_expanded = True
+
+    def collapse_notification(self, duration_ms: int = 200):
+        """Collapse notification section with animation"""
+        self.anim = QPropertyAnimation(self.notification_container, b"maximumHeight")
+        self.anim.setDuration(duration_ms)
+        self.anim.setStartValue(self.notification_container.height())
+        self.anim.setEndValue(0)
+        self.anim.setEasingCurve(QEasingCurve.InQuad)
+        self.anim.start()
+
+        self.notification_expanded = False
