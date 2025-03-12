@@ -1,4 +1,5 @@
 import datetime
+from datetime import timedelta
 import difflib
 import os
 import re
@@ -195,11 +196,11 @@ def self_check(results):
     if results["invoice_subtotal"] != round(float(results["Late Payment Charge"]) + float(results["ontario_electricity_rebate"]) + \
         float(results["balance_forward"]) + float(results["total_electricity_charges"]), 2):
         raise UnsaveableError(results['account_number'], "This invoice has unbalance amount. This error might happens when selected wrong vendor name or vendor has updated the format of invoice, please contact the developer for the second case")
-    for data in results.values():
-        if data is None:
+    for key in results.keys():
+        if results[key] is None:
             raise AmountError(results['account_number'])
-        elif isinstance(data, float):
-            data = round(data, 2)
+        elif isinstance(results[key], float):
+            results[key] = round(results[key], 2)
     return True
 
 def calculate_fiscal_year(date):
@@ -318,3 +319,26 @@ def months_since_invoice(invoice_name):
     diff = (today.year - invoice_date.year) * 12 + (today.month - invoice_date.month)
     return diff
 
+
+def get_prev_month_dates(input_date_str):
+    """
+    Given a string like 'March 5, 2025', return two strings representing
+    the start and end dates of the previous month in 'dd/mm/yyyy' format.
+    """
+    # Parse the input date
+    current_date = datetime.datetime.strptime(input_date_str, "%B %d %Y")
+
+    # Get the first day of the current month
+    first_of_this_month = current_date.replace(day=1)
+
+    # The last day of the previous month = one day before the first of this month
+    last_of_prev_month = first_of_this_month - timedelta(days=1)
+
+    # The first day of the previous month = the last day of previous month with day=1
+    first_of_prev_month = last_of_prev_month.replace(day=1)
+
+    # Format the dates as 'dd/mm/yyyy'
+    start_str = first_of_prev_month.strftime("%d/%m/%Y")
+    end_str = last_of_prev_month.strftime("%d/%m/%Y")
+
+    return start_str, end_str

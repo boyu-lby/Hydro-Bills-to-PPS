@@ -19,10 +19,12 @@
 <span class="moduletype">Script</span>  <div class="import">
 imports:
     <a href="#Controller">Controller</a>
+ &#8226;   <a href="#Invoice_PDF_process">Invoice_PDF_process</a>
  &#8226;   <a href="#Main_Window">Main_Window</a>
  &#8226;   <a href="#Model">Model</a>
  &#8226;   <a href="#PyQt5.QtWidgets">PyQt5.QtWidgets</a>
  &#8226;   <a href="#VendorInvoicesExtraction.NTP">VendorInvoicesExtraction.NTP</a>
+ &#8226;   <a href="#VendorInvoicesExtraction.burlington_hydro_scan">VendorInvoicesExtraction.burlington_hydro_scan</a>
  &#8226;   <a href="#VendorInvoicesExtraction.hydro_one">VendorInvoicesExtraction.hydro_one</a>
  &#8226;   <a href="#VendorInvoicesExtraction.welland_scan">VendorInvoicesExtraction.welland_scan</a>
  &#8226;   <a href="#_collections_abc">_collections_abc</a>
@@ -1054,6 +1056,7 @@ imported by:
 imports:
     <a href="#Main_Window">Main_Window</a>
  &#8226;   <a href="#Model">Model</a>
+ &#8226;   <a href="#PDF_Drop_Window">PDF_Drop_Window</a>
 
   </div>
   <div class="import">
@@ -1080,7 +1083,8 @@ imported by:
   <a target="code" href="///C:/Users/LiBo3/PycharmProjects/PythonProject/CustomizedExceptions.py" type="text/plain"><tt>CustomizedExceptions</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
 imported by:
-    <a href="#Web_page_interact">Web_page_interact</a>
+    <a href="#Invoice_PDF_process">Invoice_PDF_process</a>
+ &#8226;   <a href="#Web_page_interact">Web_page_interact</a>
  &#8226;   <a href="#scan_helper">scan_helper</a>
 
   </div>
@@ -1139,9 +1143,11 @@ imported by:
 imported by:
     <a href="#Configuration_Window">Configuration_Window</a>
  &#8226;   <a href="#Excel_helper">Excel_helper</a>
+ &#8226;   <a href="#Invoice_PDF_process">Invoice_PDF_process</a>
  &#8226;   <a href="#Main_Window">Main_Window</a>
  &#8226;   <a href="#Model">Model</a>
  &#8226;   <a href="#Web_page_interact">Web_page_interact</a>
+ &#8226;   <a href="#scan_helper">scan_helper</a>
 
   </div>
 
@@ -1159,27 +1165,31 @@ imported by:
 </div>
 
 <div class="node">
-  <a name="Help_Window"></a>
-  <a target="code" href="///C:/Users/LiBo3/PycharmProjects/PythonProject/Help_Window.py" type="text/plain"><tt>Help_Window</tt></a>
-<span class="moduletype">SourceModule</span>  <div class="import">
-imports:
-    <a href="#PyQt5.QtWidgets">PyQt5.QtWidgets</a>
-
-  </div>
-  <div class="import">
+  <a name="IPython"></a>
+  <a target="code" href="" type="text/plain"><tt>IPython</tt></a>
+<span class="moduletype">MissingModule</span>  <div class="import">
 imported by:
-    <a href="#Main_Window">Main_Window</a>
+    <a href="#pandas.io.formats.printing">pandas.io.formats.printing</a>
 
   </div>
 
 </div>
 
 <div class="node">
-  <a name="IPython"></a>
-  <a target="code" href="" type="text/plain"><tt>IPython</tt></a>
-<span class="moduletype">MissingModule</span>  <div class="import">
+  <a name="Invoice_PDF_process"></a>
+  <a target="code" href="///C:/Users/LiBo3/PycharmProjects/PythonProject/Invoice_PDF_process.py" type="text/plain"><tt>Invoice_PDF_process</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#CustomizedExceptions">CustomizedExceptions</a>
+ &#8226;   <a href="#Global_variables">Global_variables</a>
+ &#8226;   <a href="#VendorInvoicesExtraction.Get_invoice_extraction">VendorInvoicesExtraction.Get_invoice_extraction</a>
+ &#8226;   <a href="#scan_helper">scan_helper</a>
+
+  </div>
+  <div class="import">
 imported by:
-    <a href="#pandas.io.formats.printing">pandas.io.formats.printing</a>
+    <a href="#Model">Model</a>
+ &#8226;   <a href="#main.py">main.py</a>
 
   </div>
 
@@ -1193,7 +1203,7 @@ imports:
     <a href="#Configuration_Window">Configuration_Window</a>
  &#8226;   <a href="#Excel_helper">Excel_helper</a>
  &#8226;   <a href="#Global_variables">Global_variables</a>
- &#8226;   <a href="#Help_Window">Help_Window</a>
+ &#8226;   <a href="#PDF_Drop_Window">PDF_Drop_Window</a>
  &#8226;   <a href="#PyQt5.QtCore">PyQt5.QtCore</a>
  &#8226;   <a href="#PyQt5.QtGui">PyQt5.QtGui</a>
  &#8226;   <a href="#PyQt5.QtWidgets">PyQt5.QtWidgets</a>
@@ -1215,6 +1225,7 @@ imported by:
 imports:
     <a href="#Excel_helper">Excel_helper</a>
  &#8226;   <a href="#Global_variables">Global_variables</a>
+ &#8226;   <a href="#Invoice_PDF_process">Invoice_PDF_process</a>
  &#8226;   <a href="#PyQt5.QtCore">PyQt5.QtCore</a>
  &#8226;   <a href="#Web_page_interact">Web_page_interact</a>
 
@@ -1247,6 +1258,25 @@ imported by:
  &#8226;   <a href="#VendorInvoicesExtraction.hydro_one">VendorInvoicesExtraction.hydro_one</a>
  &#8226;   <a href="#VendorInvoicesExtraction.toronto_hydro_scan">VendorInvoicesExtraction.toronto_hydro_scan</a>
  &#8226;   <a href="#Web_page_interact">Web_page_interact</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="PDF_Drop_Window"></a>
+  <a target="code" href="///C:/Users/LiBo3/PycharmProjects/PythonProject/PDF_Drop_Window.py" type="text/plain"><tt>PDF_Drop_Window</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#PyQt5.QtCore">PyQt5.QtCore</a>
+ &#8226;   <a href="#PyQt5.QtGui">PyQt5.QtGui</a>
+ &#8226;   <a href="#PyQt5.QtWidgets">PyQt5.QtWidgets</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#Controller">Controller</a>
+ &#8226;   <a href="#Main_Window">Main_Window</a>
 
   </div>
 
@@ -3709,6 +3739,7 @@ imported by:
     <a href="#Configuration_Window">Configuration_Window</a>
  &#8226;   <a href="#Main_Window">Main_Window</a>
  &#8226;   <a href="#Model">Model</a>
+ &#8226;   <a href="#PDF_Drop_Window">PDF_Drop_Window</a>
  &#8226;   <a href="#PyQt5.QtGui">PyQt5.QtGui</a>
  &#8226;   <a href="#PyQt5.QtWidgets">PyQt5.QtWidgets</a>
 
@@ -3728,6 +3759,7 @@ imports:
 imported by:
     <a href="#Configuration_Window">Configuration_Window</a>
  &#8226;   <a href="#Main_Window">Main_Window</a>
+ &#8226;   <a href="#PDF_Drop_Window">PDF_Drop_Window</a>
  &#8226;   <a href="#PyQt5.QtWidgets">PyQt5.QtWidgets</a>
 
   </div>
@@ -3746,8 +3778,8 @@ imports:
   <div class="import">
 imported by:
     <a href="#Configuration_Window">Configuration_Window</a>
- &#8226;   <a href="#Help_Window">Help_Window</a>
  &#8226;   <a href="#Main_Window">Main_Window</a>
+ &#8226;   <a href="#PDF_Drop_Window">PDF_Drop_Window</a>
  &#8226;   <a href="#main.py">main.py</a>
  &#8226;   <a href="#pyperclip">pyperclip</a>
 
@@ -3824,7 +3856,8 @@ imported by:
   <a target="code" href="-" type="text/plain"><tt>VendorInvoicesExtraction</tt></a>
 <span class="moduletype">NamespacePackage</span>  <div class="import">
 imported by:
-    <a href="#VendorInvoicesExtraction.NPE">VendorInvoicesExtraction.NPE</a>
+    <a href="#VendorInvoicesExtraction.Get_invoice_extraction">VendorInvoicesExtraction.Get_invoice_extraction</a>
+ &#8226;   <a href="#VendorInvoicesExtraction.NPE">VendorInvoicesExtraction.NPE</a>
  &#8226;   <a href="#VendorInvoicesExtraction.NTP">VendorInvoicesExtraction.NTP</a>
  &#8226;   <a href="#VendorInvoicesExtraction.alectra_scan">VendorInvoicesExtraction.alectra_scan</a>
  &#8226;   <a href="#VendorInvoicesExtraction.burlington_hydro_scan">VendorInvoicesExtraction.burlington_hydro_scan</a>
@@ -3834,6 +3867,33 @@ imported by:
  &#8226;   <a href="#VendorInvoicesExtraction.hydro_one">VendorInvoicesExtraction.hydro_one</a>
  &#8226;   <a href="#VendorInvoicesExtraction.toronto_hydro_scan">VendorInvoicesExtraction.toronto_hydro_scan</a>
  &#8226;   <a href="#VendorInvoicesExtraction.welland_scan">VendorInvoicesExtraction.welland_scan</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="VendorInvoicesExtraction.Get_invoice_extraction"></a>
+  <a target="code" href="///C:/Users/LiBo3/PycharmProjects/PythonProject/VendorInvoicesExtraction/Get_invoice_extraction.py" type="text/plain"><tt>VendorInvoicesExtraction.Get_invoice_extraction</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#VendorInvoicesExtraction">VendorInvoicesExtraction</a>
+ &#8226;   <a href="#VendorInvoicesExtraction.NPE">VendorInvoicesExtraction.NPE</a>
+ &#8226;   <a href="#VendorInvoicesExtraction.NTP">VendorInvoicesExtraction.NTP</a>
+ &#8226;   <a href="#VendorInvoicesExtraction.alectra_scan">VendorInvoicesExtraction.alectra_scan</a>
+ &#8226;   <a href="#VendorInvoicesExtraction.burlington_hydro_scan">VendorInvoicesExtraction.burlington_hydro_scan</a>
+ &#8226;   <a href="#VendorInvoicesExtraction.elexicon">VendorInvoicesExtraction.elexicon</a>
+ &#8226;   <a href="#VendorInvoicesExtraction.fortis_scan">VendorInvoicesExtraction.fortis_scan</a>
+ &#8226;   <a href="#VendorInvoicesExtraction.grimsby">VendorInvoicesExtraction.grimsby</a>
+ &#8226;   <a href="#VendorInvoicesExtraction.hydro_one">VendorInvoicesExtraction.hydro_one</a>
+ &#8226;   <a href="#VendorInvoicesExtraction.toronto_hydro_scan">VendorInvoicesExtraction.toronto_hydro_scan</a>
+ &#8226;   <a href="#VendorInvoicesExtraction.welland_scan">VendorInvoicesExtraction.welland_scan</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#Invoice_PDF_process">Invoice_PDF_process</a>
+ &#8226;   <a href="#Web_page_interact">Web_page_interact</a>
 
   </div>
 
@@ -3854,7 +3914,8 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#Web_page_interact">Web_page_interact</a>
+    <a href="#VendorInvoicesExtraction.Get_invoice_extraction">VendorInvoicesExtraction.Get_invoice_extraction</a>
+ &#8226;   <a href="#Web_page_interact">Web_page_interact</a>
 
   </div>
 
@@ -3875,7 +3936,8 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#Web_page_interact">Web_page_interact</a>
+    <a href="#VendorInvoicesExtraction.Get_invoice_extraction">VendorInvoicesExtraction.Get_invoice_extraction</a>
+ &#8226;   <a href="#Web_page_interact">Web_page_interact</a>
  &#8226;   <a href="#main.py">main.py</a>
 
   </div>
@@ -3895,7 +3957,8 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#Web_page_interact">Web_page_interact</a>
+    <a href="#VendorInvoicesExtraction.Get_invoice_extraction">VendorInvoicesExtraction.Get_invoice_extraction</a>
+ &#8226;   <a href="#Web_page_interact">Web_page_interact</a>
 
   </div>
 
@@ -3915,7 +3978,9 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#Web_page_interact">Web_page_interact</a>
+    <a href="#VendorInvoicesExtraction.Get_invoice_extraction">VendorInvoicesExtraction.Get_invoice_extraction</a>
+ &#8226;   <a href="#Web_page_interact">Web_page_interact</a>
+ &#8226;   <a href="#main.py">main.py</a>
 
   </div>
 
@@ -3936,7 +4001,8 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#Web_page_interact">Web_page_interact</a>
+    <a href="#VendorInvoicesExtraction.Get_invoice_extraction">VendorInvoicesExtraction.Get_invoice_extraction</a>
+ &#8226;   <a href="#Web_page_interact">Web_page_interact</a>
 
   </div>
 
@@ -3956,7 +4022,8 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#Web_page_interact">Web_page_interact</a>
+    <a href="#VendorInvoicesExtraction.Get_invoice_extraction">VendorInvoicesExtraction.Get_invoice_extraction</a>
+ &#8226;   <a href="#Web_page_interact">Web_page_interact</a>
 
   </div>
 
@@ -3976,7 +4043,8 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#Web_page_interact">Web_page_interact</a>
+    <a href="#VendorInvoicesExtraction.Get_invoice_extraction">VendorInvoicesExtraction.Get_invoice_extraction</a>
+ &#8226;   <a href="#Web_page_interact">Web_page_interact</a>
 
   </div>
 
@@ -3997,7 +4065,8 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#Web_page_interact">Web_page_interact</a>
+    <a href="#VendorInvoicesExtraction.Get_invoice_extraction">VendorInvoicesExtraction.Get_invoice_extraction</a>
+ &#8226;   <a href="#Web_page_interact">Web_page_interact</a>
  &#8226;   <a href="#main.py">main.py</a>
 
   </div>
@@ -4018,7 +4087,8 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#Web_page_interact">Web_page_interact</a>
+    <a href="#VendorInvoicesExtraction.Get_invoice_extraction">VendorInvoicesExtraction.Get_invoice_extraction</a>
+ &#8226;   <a href="#Web_page_interact">Web_page_interact</a>
 
   </div>
 
@@ -4037,7 +4107,8 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#Web_page_interact">Web_page_interact</a>
+    <a href="#VendorInvoicesExtraction.Get_invoice_extraction">VendorInvoicesExtraction.Get_invoice_extraction</a>
+ &#8226;   <a href="#Web_page_interact">Web_page_interact</a>
  &#8226;   <a href="#main.py">main.py</a>
 
   </div>
@@ -4053,6 +4124,7 @@ imports:
  &#8226;   <a href="#Excel_helper">Excel_helper</a>
  &#8226;   <a href="#Global_variables">Global_variables</a>
  &#8226;   <a href="#OCR_helper">OCR_helper</a>
+ &#8226;   <a href="#VendorInvoicesExtraction.Get_invoice_extraction">VendorInvoicesExtraction.Get_invoice_extraction</a>
  &#8226;   <a href="#VendorInvoicesExtraction.NPE">VendorInvoicesExtraction.NPE</a>
  &#8226;   <a href="#VendorInvoicesExtraction.NTP">VendorInvoicesExtraction.NTP</a>
  &#8226;   <a href="#VendorInvoicesExtraction.alectra_scan">VendorInvoicesExtraction.alectra_scan</a>
@@ -49408,6 +49480,7 @@ imported by:
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
     <a href="#CustomizedExceptions">CustomizedExceptions</a>
+ &#8226;   <a href="#Global_variables">Global_variables</a>
  &#8226;   <a href="#datetime">datetime</a>
  &#8226;   <a href="#difflib">difflib</a>
  &#8226;   <a href="#os">os</a>
@@ -49417,7 +49490,8 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#VendorInvoicesExtraction.NPE">VendorInvoicesExtraction.NPE</a>
+    <a href="#Invoice_PDF_process">Invoice_PDF_process</a>
+ &#8226;   <a href="#VendorInvoicesExtraction.NPE">VendorInvoicesExtraction.NPE</a>
  &#8226;   <a href="#VendorInvoicesExtraction.NTP">VendorInvoicesExtraction.NTP</a>
  &#8226;   <a href="#VendorInvoicesExtraction.alectra_scan">VendorInvoicesExtraction.alectra_scan</a>
  &#8226;   <a href="#VendorInvoicesExtraction.burlington_hydro_scan">VendorInvoicesExtraction.burlington_hydro_scan</a>
