@@ -169,7 +169,7 @@ def vendorAddressChangeSingle(driver, account_number: str, address: str, comment
     ).click()
 
     # Switch to the new window
-    for window_handle in driver.
+    for window_handle in driver.window_handles:
         if window_handle != original_window:
             driver.switch_to.window(window_handle)
             break
