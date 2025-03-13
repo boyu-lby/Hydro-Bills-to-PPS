@@ -100,7 +100,7 @@ class PDFDropDialog(QDialog):
 
         # Vendor Dropdown Menu
         self.vendor_menu = QComboBox()
-        self.vendor_menu.addItems(['Select Vendor', 'Alectra', 'Burlington', 'Elexicon', 'Fortis', 'Grimsby', 'Hydro One', 'NPE', 'NTP', 'Toronto Hydro', 'Welland'])
+        self.vendor_menu.addItems(['Select Vendor', 'Alectra', 'Burlington Hydro', 'Elexicon', 'Fortis', 'Grimsby', 'Hydro One', 'NPE', 'NTP', 'Toronto Hydro', 'Welland'])
         self.vendor_menu.currentTextChanged.connect(self.vendor_menu_changed)
         layout.addWidget(self.vendor_menu)
 

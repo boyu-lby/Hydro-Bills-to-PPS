@@ -171,12 +171,12 @@ def pps_multiple_invoices_input(invoices_todo_lst):
                                    "Sheet1", [(invoice[0], "Invoice file not found in folder")])
             continue
 
-        except Exception as e:
-            insert_tuples_in_excel(Global_variables.failed_invoices_excel_path,
-            "Sheet1", [(invoice[0], "Please report this problem to the developer, " + type(e).__name__)])
-            print(f"{type(e).__name__}: {invoice[0]}")
-            print(str(e))
-            continue
+        # except Exception as e:
+        #     insert_tuples_in_excel(Global_variables.failed_invoices_excel_path,
+        #     "Sheet1", [(invoice[0], "Please report this problem to the developer, " + type(e).__name__)])
+        #     print(f"{type(e).__name__}: {invoice[0]}")
+        #     print(str(e))
+        #     continue
 
         else:
             if info is not None:

@@ -13,7 +13,7 @@ from VendorInvoicesExtraction.welland_scan import parse_welland_bill
 def get_invoice_extraction_function(vendor_name: str):
     functions = {
         "Alectra": parse_alectra_bill,
-        "Burlington": parse_burlington_hydro_bill,
+        "Burlington Hydro": parse_burlington_hydro_bill,
         "Elexicon": parse_elexicon_bill,
         "Fortis": parse_fortis_bill,
         "Grimsby": parse_grimsby_bill,
