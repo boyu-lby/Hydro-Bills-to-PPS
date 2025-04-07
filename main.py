@@ -14,9 +14,12 @@ from Model import Model
 
 from pynput.mouse import Controller as MouseController, Button
 
+from VendorInvoicesExtraction.Milton import parse_milton_bill
 from VendorInvoicesExtraction.NTP import parse_NTP_bill
 from VendorInvoicesExtraction.burlington_hydro_scan import parse_burlington_hydro_bill
+from VendorInvoicesExtraction.grimsby import parse_grimsby_bill
 from VendorInvoicesExtraction.hydro_one import parse_hydro_one_bill
+from VendorInvoicesExtraction.toronto_hydro_scan import parse_toronto_hydro_bill
 from Vendor_address import vendorAddressChangeMulti
 from scan_helper import find_file_with_substring, copy_as_pdf_in_original_and_destination, self_check, \
     months_since_invoice
@@ -34,7 +37,7 @@ def keep_active():
 
 def print_results(invoice):
     pdf_file_path = find_file_with_substring(r"C:\Users\LiBo3\Downloads", invoice)
-    results = parse_burlington_hydro_bill(pdf_file_path)
+    results = parse_toronto_hydro_bill(pdf_file_path)
     for key, value in results.items():
         print(f"{key}: {value}")
     print(self_check(results))
@@ -52,5 +55,4 @@ def run_app():
     sys.exit(app.exec_())
 
 if __name__ == "__main__":
-    accounts = read_column_values(r"C:\Users\LiBo3\PycharmProjects\PythonProject\Vendor Change.xlsx", "Sheet1", "Account Number")
-    vendorAddressChangeMulti(accounts, "500 COMMISSIONERS ST", "EFT Payment Changed")
+    run_app()

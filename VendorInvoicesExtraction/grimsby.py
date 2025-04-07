@@ -82,8 +82,8 @@ def parse_grimsby_bill(pdf_path):
     subtotal_text = re.search(r'Subtotal:?\s*\$?(\d{1,3}(?:,\d{3})*\.\d{1,2})', text, re.IGNORECASE).group(1)
     hst_text = re.search(r'HST\s*864874839RT0001\s*(\d{1,3}(?:,\d{3})*\.\d{1,2})', text, re.IGNORECASE).group(1)
     if subtotal_text:
-        extracted_data["total_electricity_charges"] = round((float(subtotal_text.replace(',', '')) -
-                                                             float(hst_text) - extracted_data[
+        extracted_data["total_electricity_charges"] = round((convert_to_float(subtotal_text.replace(',', '')) -
+                                                             convert_to_float(hst_text) - extracted_data[
                                                                  "ontario_electricity_rebate"]), 2)
 
     # 6) H.S.T.
@@ -91,13 +91,10 @@ def parse_grimsby_bill(pdf_path):
 
     # 7) Balance Forward
     # Example snippet: "Balance forward $0.00"
-    match = re.search(r'Balance\s*Forward\s*From\s*Previous\s*Amount\s*Owing\s*(-?\$\d{1,3}(?:,\d{3})*\.\d{1,2})', text, re.IGNORECASE)
-    if match:
-        extracted_data["balance_forward"] = float(match.group(1).replace(",", "").replace("$", ""))
-    match = re.search(r'Balance\s*forward\s*(-?\$\d{1,3}(?:,\d{3})*\.\d{1,2})', text,
+    match = re.search(r'Balance\s*forward.{0,30}\s(-?\$\d{1,3}(?:,\d{3})*\.\d{1,2})', text,
                       re.IGNORECASE)
     if match:
-        extracted_data["balance_forward"] = float(match.group(1).replace(",", "").replace("$", ""))
+        extracted_data["balance_forward"] = convert_to_float(match.group(1))
 
     # 8) Period
     # Example snippet: "From: Dec 1, 2024 00:00

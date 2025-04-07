@@ -43,8 +43,6 @@ def parse_hydro_one_bill(pdf_path):
     for page in doc:
         text += page.get_text()
 
-    print(text)
-
     def check_for_cr(amount, cr=None):
         # The numeric part (e.g. '19,299.99')
         amount_str = amount

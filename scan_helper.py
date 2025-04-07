@@ -286,7 +286,6 @@ def parse_invoice_date(invoice_name):
         possible = difflib.get_close_matches(month_abbr, month_map.keys(), n=1, cutoff=0.6)
         if possible:
             corrected = possible[0]
-            print(f"Corrected month abbreviation '{month_abbr}' to '{corrected}'")
             month_abbr = corrected
         else:
             raise ValueError(f"Month abbreviation '{month_abbr}' not recognized")

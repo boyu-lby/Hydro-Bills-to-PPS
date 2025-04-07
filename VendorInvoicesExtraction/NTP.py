@@ -47,7 +47,7 @@ def parse_NTP_bill(pdf_path):
     if match:
         extracted_data["account_number"] = match.group(1).upper()
 
-    # 2) Statement Date$228.94
+    # 2) Statement Date
     match = re.search(r'([A-Za-z]{3} \d{2}, \d{4})\s*[A-Za-z]{3} \d{2}, \d{4} - [A-Za-z]{3} \d{2}, \d{4}', text, re.IGNORECASE)
     if match:
         extracted_data["statement_date"] = match.group(1).upper().replace(",", "").replace(".", "")

@@ -300,12 +300,16 @@ def pps_single_invoice_input(results, driver=None) -> int:
             # Check if last element contains text 'Pending Payment'
             # cell contains: invoice number, vendor name, address, city, postal code, amount, currency, date received, cost center, status
             status_text = cells[9].text.strip()
-            if status_text == "Pending Payment" and index < 40:
+            if status_text == "Pending Payment" and index < 20:
                 raise PendingPaymentError(results["account_number"])
             # Check first two asserted invoices, check if they haven't been paid for a long time
             elif status_text == "Asserted":
                 asserted_invoice_rows.append(cells)
-                if Global_variables.is_period_validation_needed and not is_period_checked and months_since_invoice(cells[0].text.strip()) >= 5:
+                try:
+                    month_gap = months_since_invoice(cells[0].text.strip())
+                except ValueError as e:
+                    continue
+                if Global_variables.is_period_validation_needed and not is_period_checked and month_gap >= 5:
                     raise UnsaveableError(results["account_number"], "This account haven't been paid for a long time")
                 is_period_checked = True
 
