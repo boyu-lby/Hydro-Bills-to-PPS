@@ -13,7 +13,7 @@ class ConfigurationDialog(QDialog):
 
     def init_ui(self):
         self.setWindowTitle("Configuration")
-        self.setFixedSize(400, 450)
+        self.setMinimumSize(400, 500)  # Set minimum size instead of fixed size
 
         layout = QVBoxLayout()
         layout.setContentsMargins(20, 20, 20, 20)
@@ -22,6 +22,7 @@ class ConfigurationDialog(QDialog):
         # Email Section
         email_label = QLabel("Email:")
         self.email_input = QLineEdit()
+        self.email_input.setMinimumHeight(30)  # Set minimum height for input fields
         layout.addWidget(email_label)
         layout.addWidget(self.email_input)
 
@@ -29,12 +30,14 @@ class ConfigurationDialog(QDialog):
         password_label = QLabel("Password:")
         self.password_input = QLineEdit()
         self.password_input.setEchoMode(QLineEdit.Password)
+        self.password_input.setMinimumHeight(30)
         layout.addWidget(password_label)
         layout.addWidget(self.password_input)
 
         # Invoice pdf dir path Section
         path_label = QLabel("Invoice PDF dir path:")
         self.path_input = QLineEdit()
+        self.path_input.setMinimumHeight(30)
         layout.addWidget(path_label)
         layout.addWidget(self.path_input)
 
@@ -48,7 +51,8 @@ class ConfigurationDialog(QDialog):
         layout.addLayout(time_interval_layout)
 
         self.time_interval_input = QLineEdit()
-        self.time_interval_input.setValidator(QIntValidator(1, 999999))  # Only allow positive integers
+        self.time_interval_input.setValidator(QIntValidator(1, 999999))
+        self.time_interval_input.setMinimumHeight(30)
         layout.addWidget(self.time_interval_input)
 
         # Maximum Payment Amount Threshold Section
@@ -61,7 +65,8 @@ class ConfigurationDialog(QDialog):
         layout.addLayout(max_payment_layout)
 
         self.max_payment_input = QLineEdit()
-        self.max_payment_input.setValidator(QIntValidator(1, 999999))  # Only allow positive integers
+        self.max_payment_input.setValidator(QIntValidator(1, 999999))
+        self.max_payment_input.setMinimumHeight(30)
         layout.addWidget(self.max_payment_input)
 
         # Abnormal Amount Detection Section
@@ -74,8 +79,26 @@ class ConfigurationDialog(QDialog):
         layout.addLayout(abnormal_amount_layout)
 
         self.abnormal_amount_input = QLineEdit()
-        self.abnormal_amount_input.setValidator(QIntValidator(1, 999999))  # Only allow positive integers
+        self.abnormal_amount_input.setValidator(QIntValidator(1, 999999))
+        self.abnormal_amount_input.setMinimumHeight(30)
         layout.addWidget(self.abnormal_amount_input)
+
+        # Auto Months Calculation Section
+        auto_months_layout = QHBoxLayout()
+        auto_months_label = QLabel("How Many Months to Request for Funding: (Auto Calculation if Disabled)")
+        self.auto_months_checkbox = QCheckBox()
+        self.auto_months_checkbox.stateChanged.connect(lambda: self.on_checkbox_state_changed(self.auto_months_checkbox, self.auto_months_input))
+        auto_months_layout.addWidget(auto_months_label)
+        auto_months_layout.addWidget(self.auto_months_checkbox)
+        layout.addLayout(auto_months_layout)
+
+        self.auto_months_input = QLineEdit()
+        self.auto_months_input.setValidator(QIntValidator(1, 6))
+        self.auto_months_input.setMinimumHeight(30)
+        layout.addWidget(self.auto_months_input)
+
+        # Add stretch to push the save button to the bottom
+        layout.addStretch()
 
         # Save Button
         save_btn = QPushButton("Save & Close")
@@ -92,6 +115,7 @@ class ConfigurationDialog(QDialog):
                 background-color: #219A52;
             }
         """)
+        save_btn.setMinimumHeight(40)  # Set minimum height for the save button
         layout.addWidget(save_btn)
 
         self.setLayout(layout)
@@ -100,6 +124,7 @@ class ConfigurationDialog(QDialog):
         self.on_checkbox_state_changed(self.time_interval_checkbox, self.time_interval_input)
         self.on_checkbox_state_changed(self.max_payment_checkbox, self.max_payment_input)
         self.on_checkbox_state_changed(self.abnormal_amount_checkbox, self.abnormal_amount_input)
+        self.on_checkbox_state_changed(self.auto_months_checkbox, self.auto_months_input)
 
     def on_checkbox_state_changed(self, checkbox, input_field):
         input_field.setEnabled(checkbox.isChecked())
@@ -138,6 +163,13 @@ class ConfigurationDialog(QDialog):
                         self.abnormal_amount_input.setText(abnormal_amount_data[1])
                         Global_variables.is_abnormal_amount_validation_needed = self.abnormal_amount_checkbox.isChecked()
                         Global_variables.average_multiple_threshold = int(self.abnormal_amount_input.text()) if abnormal_amount_data[1] else 3
+                if len(lines) > 6:
+                    auto_months_data = lines[6].strip().split(',')
+                    if len(auto_months_data) == 2:
+                        self.auto_months_checkbox.setChecked(auto_months_data[0] == 'True')
+                        self.auto_months_input.setText(auto_months_data[1])
+                        Global_variables.is_auto_months_calculation_enabled = self.auto_months_checkbox.isChecked()
+                        Global_variables.auto_months_threshold = int(self.auto_months_input.text()) if auto_months_data[1] else 3
 
         except FileNotFoundError:
             QMessageBox.warning(self, "Warning",
@@ -166,6 +198,11 @@ class ConfigurationDialog(QDialog):
                 abnormal_amount_value = self.abnormal_amount_input.text().strip()
                 is_abnormal_amount_valid = self.abnormal_amount_checkbox.isChecked() and bool(abnormal_amount_value)
                 f.write(f"{is_abnormal_amount_valid},{abnormal_amount_value if is_abnormal_amount_valid else ''}\n")
+                
+                # Save auto months calculation state and value
+                auto_months_value = self.auto_months_input.text().strip()
+                is_auto_months_valid = self.auto_months_checkbox.isChecked() and bool(auto_months_value)
+                f.write(f"{is_auto_months_valid},{auto_months_value if is_auto_months_valid else ''}\n")
                 
             self.accept()
         except Exception as e:

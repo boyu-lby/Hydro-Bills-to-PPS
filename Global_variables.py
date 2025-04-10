@@ -12,6 +12,11 @@ ontario_email = ''
 ontario_password = ''
 is_period_validation_needed = False
 period_need_validate = 0
-maximum_payment_amount = 20000
-average_multiple_threshold = 3
+is_max_payment_validation_needed = False
+max_payment_need_validate = 10000
 is_abnormal_amount_validation_needed = False
+average_multiple_threshold = 3
+
+# Auto months calculation configuration
+is_auto_months_calculation_enabled = False
+auto_months_threshold = 3  # Default to 3 months if not specified

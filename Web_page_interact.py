@@ -639,8 +639,8 @@ def check_and_request_funding(driver, results) -> bool:
 
     # Calculate the approximate amount needed
     approximate_amount_needed = round((((convert_to_float(results['amount_due']) - convert_to_float(results['balance_forward']))
-                                 * min(max(months_to_next_fiscal_period(results['period_start_date']), 1), 6)) - remaining_funding +
-                                 convert_to_float(results['balance_forward']))+1.0, 0)
+                                 * min(max(months_to_next_fiscal_period(results['period_start_date']) if Global_variables.is_auto_months_calculation_enabled else Global_variables.auto_months_threshold, 1), 6))
+                                   - remaining_funding + convert_to_float(results['balance_forward']))+1.0, 0)
     print(f"amount_due: {results['amount_due']}")
     print(f"balance_forward: {str(results['balance_forward'])}")
     print(f"approximate_amount_needed: {str(approximate_amount_needed)}")
