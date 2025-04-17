@@ -1,7 +1,7 @@
 import Global_variables
 from CustomizedExceptions import UnsaveableError
 from VendorInvoicesExtraction.Get_invoice_extraction import get_invoice_extraction_function
-from scan_helper import copy_as_pdf_in_original_and_destination, self_check
+from scan_helper import copy_as_pdf_in_original_and_destination, self_check, get_invoice_dir_path
 
 
 def invoice_pdf_scan_and_rename(pdf_file_path: str, vendor_name: str) -> (bool, str):
@@ -24,7 +24,8 @@ def invoice_pdf_scan_and_rename(pdf_file_path: str, vendor_name: str) -> (bool, 
         return False, pdf_file_path
 
     # Create a named copy in to_do invoices folder
-    copy_as_pdf_in_original_and_destination(pdf_file_path, Global_variables.todo_invoices_dir_path, results['suggested_file_name'])
+    if copy_as_pdf_in_original_and_destination(pdf_file_path, get_invoice_dir_path(), results['suggested_file_name']) is None:
+        return False, pdf_file_path
 
     return True, results['suggested_file_name']
 

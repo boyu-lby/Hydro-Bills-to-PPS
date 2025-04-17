@@ -166,17 +166,13 @@ def pps_multiple_invoices_input(invoices_todo_lst):
                 "Sheet1", [(invoice[0], "Permission denied")])
             continue
 
-        except AttributeError as e:
-            insert_tuples_in_excel(Global_variables.failed_invoices_excel_path,
-                                   "Sheet1", [(invoice[0], "Invoice file not found in folder")])
-            continue
 
-        # except Exception as e:
-        #     insert_tuples_in_excel(Global_variables.failed_invoices_excel_path,
-        #     "Sheet1", [(invoice[0], "Please report this problem to the developer, " + type(e).__name__)])
-        #     print(f"{type(e).__name__}: {invoice[0]}")
-        #     print(str(e))
-        #     continue
+        except Exception as e:
+            insert_tuples_in_excel(Global_variables.failed_invoices_excel_path,
+            "Sheet1", [(invoice[0], "Please report this problem to the developer, " + type(e).__name__)])
+            print(f"{type(e).__name__}: {invoice[0]}")
+            print(str(e))
+            continue
 
         else:
             if info is not None:
@@ -200,7 +196,7 @@ def pps_single_invoice_input(results, driver=None) -> int:
     :return: 1 indicates requested funding, 2 indicates requested payment approval
     """
     # Check if amount is greater that the maximum amount threshold
-    if convert_to_float(results["amount_due"]) > Global_variables.maximum_payment_amount:
+    if convert_to_float(results["amount_due"]) > Global_variables.max_payment_need_validate:
         raise UnsaveableError(results['account_number'], "Exceeds maximum amount threshold")
 
     # 1. Launch browser (make sure you have installed ChromeDriver or another WebDriver)
@@ -298,8 +294,7 @@ def pps_single_invoice_input(results, driver=None) -> int:
             if len(cells) <= 9:
                 continue
             # Check if last element contains text 'Pending Payment'
-            # cell contains: invoice number, vendor name, address, city, postal code, amount, currency, date received, cost center, status
-            status_text = cells[9].text.strip()
+            status_text = cells[5].text.strip()
             if status_text == "Pending Payment" and index < 20:
                 raise PendingPaymentError(results["account_number"])
             # Check first two asserted invoices, check if they haven't been paid for a long time
@@ -309,14 +304,15 @@ def pps_single_invoice_input(results, driver=None) -> int:
                     month_gap = months_since_invoice(cells[0].text.strip())
                 except ValueError as e:
                     continue
-                if Global_variables.is_period_validation_needed and not is_period_checked and month_gap >= 5:
+                if Global_variables.is_period_validation_needed and (not is_period_checked) and month_gap >= Global_variables.period_need_validate:
                     raise UnsaveableError(results["account_number"], "This account haven't been paid for a long time")
                 is_period_checked = True
 
             invoice_number_text = cells[0].text.strip()
-            if invoice_number_text.replace("-", "").replace(' ', '') == results["account_number"].replace("-", "").replace(' ', '') + convert_month_abbr(results["suggested_file_name"][-7:-4]) + results["suggested_file_name"][-2:]\
-                    and status_text != 'Cancelled':
-                raise UnsaveableError(results['account_number'], f"{results['suggested_file_name']} is already exists")
+            invoice_name = results["account_number"].replace("-", "").replace(' ', '') + convert_month_abbr(
+                results["suggested_file_name"][-7:-4]) + results["suggested_file_name"][-2:]
+            if invoice_number_text.replace("-", "").replace(' ', '') == invoice_name and status_text != 'Cancelled':
+                raise UnsaveableError(results['account_number'], f"{invoice_name} is already exists in PPS")
             index += 1
 
         # Check if the invoice amount is abnormally large
@@ -576,11 +572,6 @@ def get_remaining_funding(driver, results) -> float:
         EC.visibility_of_element_located((By.ID, "contentPlaceHolder_awardTitle_remaining"))
     ).text.strip())
 
-    # Get current fiscal year
-    current_fiscal_year = calculate_fiscal_year(results['statement_date'])
-    if current_fiscal_year is None:
-        raise UnsaveableError(results['invoice_number'], 'failed to calculate fiscal year')
-
     # Click 'Financial Information'
     WebDriverWait(driver, 10).until(
         EC.visibility_of_element_located((By.ID, "tabControl_Financials_HyperLink"))
@@ -598,6 +589,19 @@ def get_remaining_funding(driver, results) -> float:
     table = wait.until(
         EC.presence_of_element_located((By.ID, "contentPlaceHolder_financialControl_distribution_gridFiscal"))
     )
+
+    # Get current fiscal year
+    current_fiscal_year = 0
+    rows = table.find_elements(By.TAG_NAME, "tr")
+    for row in rows[1:]:
+        # Find all cells in the row
+        cells = row.find_elements(By.TAG_NAME, "td")
+        input_elements = cells[2].find_elements(By.TAG_NAME, "input")
+        if input_elements:
+            current_fiscal_year = cells[0].text.strip()
+            break
+    if current_fiscal_year == 0:
+        raise UnsaveableError(results['account_number'], 'Unable to find current fiscal year. Please contact the developer for this problem')
 
     # Get all rows inside the table
     rows = table.find_elements(By.TAG_NAME, "tr")
@@ -627,6 +631,9 @@ def check_and_request_funding(driver, results) -> bool:
     if financial_information_button_text == 'Financial (Approval Pending)':
         is_funding_in_pending = True
 
+    if is_funding_in_pending:
+        raise UnsaveableError(results['account_number'], 'Funding request is in pending')
+
     # Get remaining funding
     remaining_funding = get_remaining_funding(driver, results)
 
@@ -634,32 +641,34 @@ def check_and_request_funding(driver, results) -> bool:
     if convert_to_float(results['amount_due']) <= remaining_funding:
         return False
 
-    if is_funding_in_pending:
-        raise UnsaveableError(results['account_number'], 'Funding request is in pending')
-
     # Calculate the approximate amount needed
-    approximate_amount_needed = round((((convert_to_float(results['amount_due']) - convert_to_float(results['balance_forward']))
-                                 * min(max(months_to_next_fiscal_period(results['period_start_date']) if Global_variables.is_auto_months_calculation_enabled else Global_variables.auto_months_threshold, 1), 6))
+    n_months = min(max(months_to_next_fiscal_period(results['period_start_date']) if Global_variables.is_auto_months_calculation_enabled else Global_variables.auto_months_threshold, 1), 6)
+    print(f"n_months = {n_months}")
+    approximate_amount_needed = round((((convert_to_float(results['amount_due']) - convert_to_float(results['balance_forward'])) * n_months)
                                    - remaining_funding + convert_to_float(results['balance_forward']))+1.0, 0)
     print(f"amount_due: {results['amount_due']}")
     print(f"balance_forward: {str(results['balance_forward'])}")
     print(f"approximate_amount_needed: {str(approximate_amount_needed)}")
 
-    # Get current fiscal year
-    current_fiscal_year = calculate_fiscal_year(results['statement_date'])
-    if current_fiscal_year is None:
-        raise UnsaveableError(results['invoice_number'], 'failed to calculate fiscal year')
-
     # Wait for the link to be present in the DOM
     wait = WebDriverWait(driver, 10)  # up to 10 seconds
 
-    # Locate the current fiscal year
     table = wait.until(
         EC.presence_of_element_located((By.ID, "contentPlaceHolder_financialControl_distribution_gridFiscal"))
     )
 
-    # Get all rows inside the table
+    # Get current fiscal year
+    current_fiscal_year = 0
     rows = table.find_elements(By.TAG_NAME, "tr")
+    for row in rows[1:]:
+        # Find all cells in the row
+        cells = row.find_elements(By.TAG_NAME, "td")
+        input_elements = cells[2].find_elements(By.TAG_NAME, "input")
+        if input_elements:
+            current_fiscal_year = cells[0].text.strip()
+            break
+    if current_fiscal_year == 0:
+        raise UnsaveableError(results['account_number'], 'Unable to find current fiscal year. Please contact the developer for this problem')
 
     is_future_fiscal_year = False
     for row in rows:
@@ -905,3 +914,4 @@ def tester_function(results, driver=None):
     finally:
         if quit_after:
             driver.quit()
+

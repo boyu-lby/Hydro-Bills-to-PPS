@@ -16,6 +16,7 @@ from pynput.mouse import Controller as MouseController, Button
 
 from VendorInvoicesExtraction.Milton import parse_milton_bill
 from VendorInvoicesExtraction.NTP import parse_NTP_bill
+from VendorInvoicesExtraction.alectra_scan import parse_alectra_bill
 from VendorInvoicesExtraction.burlington_hydro_scan import parse_burlington_hydro_bill
 from VendorInvoicesExtraction.grimsby import parse_grimsby_bill
 from VendorInvoicesExtraction.hydro_one import parse_hydro_one_bill
@@ -37,7 +38,7 @@ def keep_active():
 
 def print_results(invoice):
     pdf_file_path = find_file_with_substring(r"C:\Users\LiBo3\Downloads", invoice)
-    results = parse_toronto_hydro_bill(pdf_file_path)
+    results = parse_alectra_bill(pdf_file_path)
     for key, value in results.items():
         print(f"{key}: {value}")
     print(self_check(results))

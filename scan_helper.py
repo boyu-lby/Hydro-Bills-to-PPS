@@ -100,7 +100,6 @@ def copy_as_pdf_in_original_and_destination(
         print(f"An unexpected error occurred: {e}")
         return None
 
-
 def convert_date_from_full(date_str: str) -> str:
     """
     Converts a date string in the format 'MONTH DD, YYYY' (e.g., 'FEBRUARY 03, 2025')
@@ -341,3 +340,13 @@ def get_prev_month_dates(input_date_str):
     end_str = last_of_prev_month.strftime("%d/%m/%Y")
 
     return start_str, end_str
+
+def get_invoice_dir_path():
+    try:
+        with open(Global_variables.configuration_file_path, 'r') as f:
+            lines = f.readlines()
+            return lines[2].strip() if len(lines) > 1 else ""
+    except FileNotFoundError:
+        print(f"Warning","Configuration file not found. A new one will be created on save.")
+    except Exception as e:
+        print(f"Error", f"Failed to load config: {str(e)}")
