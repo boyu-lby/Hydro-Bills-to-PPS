@@ -496,12 +496,12 @@ def pps_single_invoice_input(results, driver=None) -> int:
 
         # Press 'Save As Pending Payment'
         WebDriverWait(driver, 10).until(
-            EC.visibility_of_element_located((By.ID, "contentPlaceHolder_ContentPlaceHolder1_btnSaveAsPendingPayment"))
+            EC.element_to_be_clickable((By.ID, "contentPlaceHolder_ContentPlaceHolder1_btnSaveAsPendingPayment"))
         ).click()
 
         # Press 'New Payment Certificate'
         WebDriverWait(driver, 10).until(
-            EC.visibility_of_element_located((By.ID, "contentPlaceHolder_TabContainer1_TabPanel4_btnNewPaymentCertificate"))
+            EC.element_to_be_clickable((By.ID, "contentPlaceHolder_TabContainer1_TabPanel4_btnNewPaymentCertificate"))
         ).click()
 
         # Input comment again
@@ -533,12 +533,12 @@ def pps_single_invoice_input(results, driver=None) -> int:
 
         # Press 'Save As Draft'
         WebDriverWait(driver, 10).until(
-            EC.visibility_of_element_located((By.ID, "contentPlaceHolder_ContentPlaceHolder1_SavePC"))
+            EC.element_to_be_clickable((By.ID, "contentPlaceHolder_ContentPlaceHolder1_SavePC"))
         ).click()
 
         # Press 'Request Approval'
         WebDriverWait(driver, 10).until(
-            EC.visibility_of_element_located((By.ID, "contentPlaceHolder_TabContainer1_TabPanel4_btnRequestApproval"))
+            EC.element_to_be_clickable((By.ID, "contentPlaceHolder_TabContainer1_TabPanel4_btnRequestApproval"))
         ).click()
 
         # Check if the button 'Request Approval' still exists
