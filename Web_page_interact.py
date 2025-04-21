@@ -166,7 +166,6 @@ def pps_multiple_invoices_input(invoices_todo_lst):
                 "Sheet1", [(invoice[0], "Permission denied")])
             continue
 
-
         except Exception as e:
             insert_tuples_in_excel(Global_variables.failed_invoices_excel_path,
             "Sheet1", [(invoice[0], "Please report this problem to the developer, " + type(e).__name__)])
