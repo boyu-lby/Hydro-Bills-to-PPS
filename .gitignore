@@ -1,8 +1,23 @@
+# Directories
 Temp Hydro Invoices/
 .idea/
 .venv/
 build/
 dist/
+__pycache__/
+*.egg-info/
+
+# Executable files
 *.exe
-Configuration.txt
+*.dll
+*.pyd
+*.so
+
+# Excel files
 *.xlsx
+*.xls
+*.xlsm
+*.xlsb
+
+# Configuration files
+Configuration.txt

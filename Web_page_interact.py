@@ -41,9 +41,7 @@ def login(driver):
     #    - "i0116" (older)
     #    - "loginfmt" (common)
     #    - Or use driver.find_element(By.NAME, "loginfmt")
-    email_input = WebDriverWait(driver, 10).until(
-        EC.visibility_of_element_located((By.NAME, "loginfmt"))
-    )
+    email_input = retrying_find_element(driver, EC.element_to_be_clickable, "loginfmt")
     email_input.clear()
     email_input.send_keys(ONTARIO_EMAIL)
 
@@ -55,9 +53,7 @@ def login(driver):
     # 5. (Try to) wait for the password field and enter the password.
     # If the browser remembers the password, this step might be skipped, causing a timeout.
     try:
-        password_input = WebDriverWait(driver, 5).until(
-            EC.visibility_of_element_located((By.NAME, "passwd"))
-        )
+        password_input = retrying_find_element(driver, EC.element_to_be_clickable, "passwd")
         password_input.clear()
         password_input.send_keys(ONTARIO_PASSWORD)
 
@@ -72,9 +68,7 @@ def login(driver):
     #    Sometimes you see a prompt with the same button ID "idSIButton9" for "Yes."
     #    Or you might see "idBtn_Back" for "No." Adjust as needed.
     try:
-        stay_signed_in_button = WebDriverWait(driver, 5).until(
-            EC.element_to_be_clickable((By.ID, "idSIButton9"))
-        )
+        stay_signed_in_button = retrying_find_element(driver, EC.element_to_be_clickable, "idSIButton9")
         stay_signed_in_button.click()
     except:
         print("No 'Stay signed in?' prompt appeared, continuing...")
@@ -223,16 +217,12 @@ def pps_single_invoice_input(results, driver=None) -> int:
         view_update_link.click()
 
         # Input account number
-        account_number_input_bar = WebDriverWait(driver, 10).until(
-            EC.visibility_of_element_located((By.ID, "contentPlaceHolder_utilityAccount"))
-        )
+        account_number_input_bar = retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_utilityAccount")
         account_number_input_bar.clear()
         account_number_input_bar.send_keys(results["account_number"].replace("-", "").replace(" ", ""))
 
         # Press 'search' for account number
-        WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.ID, "contentPlaceHolder_pbSearch"))
-        ).click()
+        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_pbSearch").click()
 
         # Wait for results table and process rows
         table = wait.until(
@@ -266,17 +256,13 @@ def pps_single_invoice_input(results, driver=None) -> int:
             raise UnsaveableError(results['account_number'], 'Expected to find only one approved account, but found zero or more than one approved account')
 
         # Check if 'Do not pay' is written in comments
-        comments = WebDriverWait(driver, 10).until(
-            EC.visibility_of_element_located((By.ID, "contentPlaceHolder_agreementControl_ctl00_description"))
-        ).get_attribute("value")
+        comments = retrying_find_element(driver, EC.visibility_of_element_located, "contentPlaceHolder_agreementControl_ctl00_description").get_attribute("value")
         comments = comments.replace(' ', '').replace('-', '').replace("'", '')
         if 'DONOTPAY' in comments or 'DONTPAY' in comments:
             raise UnsaveableError(results['account_number'], "Found 'Do not pay' in comments")
 
         # Press 'invoice' to see all invoices
-        WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.ID, "tabControl_InvoicesTab_HyperLink"))
-        ).click()
+        retrying_find_element(driver, EC.element_to_be_clickable, "tabControl_InvoicesTab_HyperLink").click()
 
         # Check if any payment is pending and if the suggested invoice number exists
         table = wait.until(
@@ -325,58 +311,34 @@ def pps_single_invoice_input(results, driver=None) -> int:
             indicator = 1
 
         # Press 'invoice' to see all invoices
-        WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.ID, "tabControl_InvoicesTab_HyperLink"))
-        ).click()
+        retrying_find_element(driver, EC.element_to_be_clickable, "tabControl_InvoicesTab_HyperLink").click()
 
         # Press 'new invoice' to creat a new invoice
-        WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.ID, "contentPlaceHolder_invoiceControl_btnNewInvoice"))
-        ).click()
+        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_invoiceControl_btnNewInvoice").click()
 
         # Input account number
         temp_input_text = results["account_number"].replace("-", "").replace(' ', '') + convert_month_abbr(results["suggested_file_name"][-7:-4]) + results["suggested_file_name"][-2:]
-        WebDriverWait(driver, 10).until(
-            EC.visibility_of_element_located((By.ID, "contentPlaceHolder_ContentPlaceHolder1_ctl00_txtInvoiceNumber"))
-        ).send_keys(temp_input_text)
+        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_ctl00_txtInvoiceNumber").send_keys(temp_input_text)
 
         # Input period-to
-        WebDriverWait(driver, 10).until(
-            EC.visibility_of_element_located((By.ID, "contentPlaceHolder_ContentPlaceHolder1_ctl00_workPeriodFrom"))
-        ).send_keys(results["period_start_date"]+Keys.ENTER)
+        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_ctl00_workPeriodFrom").send_keys(results["period_start_date"]+Keys.ENTER)
         # Input period-from
-        WebDriverWait(driver, 10).until(
-            EC.visibility_of_element_located((By.ID, "contentPlaceHolder_ContentPlaceHolder1_ctl00_workPeriodTo"))
-        ).send_keys(results["period_end_date"]+Keys.ENTER)
+        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_ctl00_workPeriodTo").send_keys(results["period_end_date"]+Keys.ENTER)
         # Input statement period
-        WebDriverWait(driver, 10).until(
-            EC.visibility_of_element_located((By.ID, "contentPlaceHolder_ContentPlaceHolder1_ctl00_invoiceDate"))
-        ).send_keys(results["statement_date"]+Keys.ENTER)
+        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_ctl00_invoiceDate").send_keys(results["statement_date"]+Keys.ENTER)
         # Input current date
-        WebDriverWait(driver, 10).until(
-            EC.visibility_of_element_located((By.ID, "contentPlaceHolder_ContentPlaceHolder1_ctl00_dateReceived"))
-        ).send_keys(get_today_date()+Keys.ENTER)
+        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_ctl00_dateReceived").send_keys(get_today_date()+Keys.ENTER)
         # Input invoice subtotal
-        WebDriverWait(driver, 10).until(
-            EC.visibility_of_element_located((By.ID, "contentPlaceHolder_ContentPlaceHolder1_ctl00_summaryInvoiceTotal"))
-        ).send_keys(str(results["invoice_subtotal"]))
+        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_ctl00_summaryInvoiceTotal").send_keys(str(results["invoice_subtotal"]))
         # Input H.S.T.
-        WebDriverWait(driver, 10).until(
-            EC.visibility_of_element_located((By.ID, "contentPlaceHolder_ContentPlaceHolder1_ctl00_summaryHSTTotal"))
-        ).send_keys(str(results["hst"]))
+        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_ctl00_summaryHSTTotal").send_keys(str(results["hst"]))
         # Input comment.
-        WebDriverWait(driver, 10).until(
-            EC.visibility_of_element_located((By.ID, "contentPlaceHolder_ContentPlaceHolder1_ctl00_commentsBox"))
-        ).send_keys(results["suggested_file_name"][-7:-4] + " " + results["suggested_file_name"][-4:])
+        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_ctl00_commentsBox").send_keys(results["suggested_file_name"][-7:-4] + " " + results["suggested_file_name"][-4:])
         # Press 'Line Items' to specify amount detail
-        WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.ID, "contentPlaceHolder_btnNext"))
-        ).click()
+        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_btnNext").click()
 
         # Press 'Add New Line'
-        WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.ID, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_newLine"))
-        ).click()
+        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_newLine").click()
         # Select amount type
         dropdown_menu = wait.until(
             EC.presence_of_element_located((By.ID, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_accountDescription"))
@@ -384,34 +346,24 @@ def pps_single_invoice_input(results, driver=None) -> int:
         select_dropdown = Select(dropdown_menu)
         select_dropdown.select_by_visible_text("Electricity")
         # Input amount
-        WebDriverWait(driver, 10).until(
-            EC.visibility_of_element_located((By.ID, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_amount"))
-        ).send_keys(str(results["total_electricity_charges"]).replace(",", ""))
+        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_amount").send_keys(str(results["total_electricity_charges"]).replace(",", ""))
         # Press 'Update'
-        WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.ID, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_btnSave"))
-        ).click()
+        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_btnSave").click()
         # Check if amount inputted succeed
         elements = driver.find_elements(By.XPATH, "//li[normalize-space()='Line Amount is mandatory.']")
         times = 0
         while elements and times < 10:
             time.sleep(0.5)
             print('wait')
-            WebDriverWait(driver, 10).until(
-                EC.visibility_of_element_located((By.ID, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_amount"))
-            ).send_keys(str(results["total_electricity_charges"]).replace(",", ""))
-            WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.ID, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_btnSave"))
-            ).click()
+            retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_amount").send_keys(str(results["total_electricity_charges"]).replace(",", ""))
+            retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_btnSave").click()
             elements = driver.find_elements(By.XPATH, "//li[normalize-space()='Line Amount is mandatory.']")
             times += 1
 
         # Input Late Payment Charges Info
         if results["Late Payment Charge"] is not None and results["Late Payment Charge"] != 0:
             # Press 'Add New Line'
-            WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.ID, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_newLine"))
-            ).click()
+            retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_newLine").click()
             # Select amount type
             dropdown_menu = wait.until(
                 EC.presence_of_element_located(
@@ -420,26 +372,17 @@ def pps_single_invoice_input(results, driver=None) -> int:
             select_dropdown = Select(dropdown_menu)
             select_dropdown.select_by_visible_text("Late Payment Charges")
             # Input amount
-            WebDriverWait(driver, 10).until(
-                EC.visibility_of_element_located((By.ID, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_amount"))
-            ).send_keys(str(results["Late Payment Charge"]).replace(",", ""))
+            retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_amount").send_keys(str(results["Late Payment Charge"]).replace(",", ""))
             # Press 'Update'
-            WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.ID, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_btnSave"))
-            ).click()
+            retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_btnSave").click()
             # Check if amount inputted succeed
             elements = driver.find_elements(By.XPATH, "//li[normalize-space()='Line Amount is mandatory.']")
             times = 0
             while elements and times < 10:
                 time.sleep(0.5)
                 print('wait')
-                WebDriverWait(driver, 10).until(
-                    EC.visibility_of_element_located(
-                        (By.ID, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_amount"))
-                ).send_keys(str(results["Late Payment Charge"]).replace(",", ""))
-                WebDriverWait(driver, 10).until(
-                    EC.element_to_be_clickable((By.ID, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_btnSave"))
-                ).click()
+                retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_amount").send_keys(str(results["Late Payment Charge"]).replace(",", ""))
+                retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_btnSave").click()
                 elements = driver.find_elements(By.XPATH, "//li[normalize-space()='Line Amount is mandatory.']")
                 times += 1
 
@@ -447,9 +390,7 @@ def pps_single_invoice_input(results, driver=None) -> int:
         ETE = round(results["balance_forward"] + results["ontario_electricity_rebate"], 2)
         if ETE is not None and ETE != 0:
             # Press 'Add New Line'
-            WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.ID, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_newLine"))
-            ).click()
+            retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_newLine").click()
             # Select amount type
             dropdown_menu = wait.until(
                 EC.presence_of_element_located(
@@ -458,73 +399,48 @@ def pps_single_invoice_input(results, driver=None) -> int:
             select_dropdown = Select(dropdown_menu)
             select_dropdown.select_by_visible_text("Electricity (Tax Exempt)")
             # Input amount
-            WebDriverWait(driver, 10).until(
-                EC.visibility_of_element_located((By.ID, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_amount"))
-            ).send_keys(ETE)
+            retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_amount").send_keys(ETE)
             # Press 'Update'
-            WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.ID, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_btnSave"))
-            ).click()
+            retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_btnSave").click()
             # Check if amount inputted succeed
             elements = driver.find_elements(By.XPATH, "//li[normalize-space()='Line Amount is mandatory.']")
             times = 0
             while elements and times < 10:
                 time.sleep(0.5)
                 print('wait')
-                WebDriverWait(driver, 10).until(
-                    EC.visibility_of_element_located(
-                        (By.ID, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_amount"))
-                ).send_keys(ETE)
+                retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_amount").send_keys(ETE)
                 # Press 'Update'
-                WebDriverWait(driver, 10).until(
-                    EC.element_to_be_clickable((By.ID, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_btnSave"))
-                ).click()
+                retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_btnSave").click()
                 elements = driver.find_elements(By.XPATH, "//li[normalize-space()='Line Amount is mandatory.']")
                 times += 1
 
         # Check if the line items match
-        message_text = WebDriverWait(driver, 10).until(
-            EC.visibility_of_element_located((By.ID, "PPSHeader_messageText"))
-        )
+        message_text = retrying_find_element(driver, EC.visibility_of_element_located, "PPSHeader_messageText")
         if message_text.text.strip() != "The line items total matches the invoice total.":
             raise ExtractedDataUnmatchError(results["account_number"])
 
         # Press 'Confirmation'
-        WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.ID, "contentPlaceHolder_btnNext"))
-        ).click()
+        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_btnNext").click()
 
         # Press 'Save As Pending Payment'
-        WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.ID, "contentPlaceHolder_ContentPlaceHolder1_btnSaveAsPendingPayment"))
-        ).click()
+        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_btnSaveAsPendingPayment").click()
 
         # Press 'New Payment Certificate'
-        WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.ID, "contentPlaceHolder_TabContainer1_TabPanel4_btnNewPaymentCertificate"))
-        ).click()
+        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_TabContainer1_TabPanel4_btnNewPaymentCertificate").click()
 
         # Input comment again
-        WebDriverWait(driver, 10).until(
-            EC.visibility_of_element_located((By.ID, "contentPlaceHolder_ContentPlaceHolder1_paymentCertificateHeader_comments"))
-        ).send_keys(results["suggested_file_name"][-7:-4] + " " + results["suggested_file_name"][-4:])
+        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_paymentCertificateHeader_comments").send_keys(results["suggested_file_name"][-7:-4] + " " + results["suggested_file_name"][-4:])
 
         # Press 'Confirmation'
-        WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.ID, "contentPlaceHolder_btnNext"))
-        ).click()
+        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_btnNext").click()
 
         # Check if 'Confirmation' is clicked successfully
-        element = WebDriverWait(driver, 0.5).until(
-            EC.visibility_of_element_located((By.ID, "contentPlaceHolder_btnNext"))
-        )
+        element = retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_btnNext")
         times = 0
         while element and times < 20:
             try:
                 element.click()
-                element = WebDriverWait(driver, 0.5).until(
-                    EC.visibility_of_element_located((By.ID, "contentPlaceHolder_btnNext"))
-                )
+                element = retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_btnNext")
             except:
                 pass
             finally:
@@ -532,21 +448,15 @@ def pps_single_invoice_input(results, driver=None) -> int:
                 times += 1
 
         # Press 'Save As Draft'
-        WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.ID, "contentPlaceHolder_ContentPlaceHolder1_SavePC"))
-        ).click()
+        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_SavePC").click()
 
         # Press 'Request Approval'
-        WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.ID, "contentPlaceHolder_TabContainer1_TabPanel4_btnRequestApproval"))
-        ).click()
+        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_TabContainer1_TabPanel4_btnRequestApproval").click()
 
         # Check if the button 'Request Approval' still exists
         error_b_element = None
         try:
-            error_b_element = WebDriverWait(driver, 10).until(
-                EC.visibility_of_element_located((By.ID, "contentPlaceHolder_TabContainer1_TabPanel4_btnRequestApproval"))
-            )
+            error_b_element = retrying_find_element(driver, EC.visibility_of_element_located, "contentPlaceHolder_TabContainer1_TabPanel4_btnRequestApproval")
 
         except TimeoutException:
             raise UnsaveableError(results['account_number'], 'Web scraping element not found, check account status')
@@ -565,19 +475,13 @@ def pps_single_invoice_input(results, driver=None) -> int:
 
 def get_remaining_funding(driver, results) -> float:
     """Get the remaining function for the fiscal year which the bill belongs to"""
-    remaining = convert_to_float(WebDriverWait(driver, 10).until(
-        EC.visibility_of_element_located((By.ID, "contentPlaceHolder_awardTitle_remaining"))
-    ).text.strip())
+    remaining = convert_to_float(retrying_find_element(driver, EC.visibility_of_element_located, "contentPlaceHolder_awardTitle_remaining").text.strip())
 
     # Click 'Financial Information'
-    WebDriverWait(driver, 10).until(
-        EC.visibility_of_element_located((By.ID, "tabControl_Financials_HyperLink"))
-    ).click()
+    retrying_find_element(driver, EC.element_to_be_clickable, "tabControl_Financials_HyperLink").click()
 
     # Click 'New Adjustment'
-    WebDriverWait(driver, 10).until(
-        EC.visibility_of_element_located((By.ID, "contentPlaceHolder_operationsControl_btnNew"))
-    ).click()
+    retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_operationsControl_btnNew").click()
 
     # Wait for the link to be present in the DOM
     wait = WebDriverWait(driver, 10)  # up to 10 seconds
@@ -620,10 +524,8 @@ def get_remaining_funding(driver, results) -> float:
     return round(remaining, 2)
 
 def check_and_request_funding(driver, results) -> bool:
-    # Click if funding is in pending
-    financial_information_button_text = WebDriverWait(driver, 10).until(
-        EC.visibility_of_element_located((By.ID, "tabControl_Financials_HyperLink"))
-    ).text.strip()
+    # Check if funding is in pending
+    financial_information_button_text = retrying_find_element(driver, EC.visibility_of_element_located, "tabControl_Financials_HyperLink").text.strip()
     is_funding_in_pending = False
     if financial_information_button_text == 'Financial (Approval Pending)':
         is_funding_in_pending = True
@@ -682,21 +584,15 @@ def check_and_request_funding(driver, results) -> bool:
             input_bar.send_keys(str(approximate_amount_needed))
 
     # Input total amount adjustment
-    amount_input_bar = WebDriverWait(driver, 10).until(
-        EC.visibility_of_element_located((By.ID, "contentPlaceHolder_financialControl_amount"))
-    )
+    amount_input_bar = retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_financialControl_amount")
     amount_input_bar.clear()
     amount_input_bar.send_keys(str(approximate_amount_needed))
 
     # Input description
-    WebDriverWait(driver, 10).until(
-        EC.visibility_of_element_located((By.ID, "contentPlaceHolder_financialControl_comments"))
-    ).send_keys('ADJ')
+    retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_financialControl_comments").send_keys('ADJ')
 
     # Click 'Request Approval
-    WebDriverWait(driver, 10).until(
-        EC.visibility_of_element_located((By.ID, "contentPlaceHolder_operationsControl_btnRequestApproval"))
-    ).click()
+    retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_operationsControl_btnRequestApproval").click()
 
     return True
 
@@ -827,16 +723,12 @@ def tester_function(results, driver=None):
         view_update_link.click()
 
         # Input account number
-        account_number_input_bar = WebDriverWait(driver, 10).until(
-            EC.visibility_of_element_located((By.ID, "contentPlaceHolder_utilityAccount"))
-        )
+        account_number_input_bar = retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_utilityAccount")
         account_number_input_bar.clear()
         account_number_input_bar.send_keys(results["account_number"].replace("-", "").replace(" ", ""))
 
         # Press 'search' for account number
-        WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.ID, "contentPlaceHolder_pbSearch"))
-        ).click()
+        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_pbSearch").click()
 
         # Wait for results table and process rows
         table = wait.until(
@@ -872,9 +764,7 @@ def tester_function(results, driver=None):
         check_and_request_funding(driver, results)
         
          # Press 'invoice' to see all invoices
-        WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.ID, "tabControl_InvoicesTab_HyperLink"))
-        ).click()
+        retrying_find_element(driver, EC.element_to_be_clickable, "tabControl_InvoicesTab_HyperLink").click()
 
         # Check if any payment is pending and if the suggested invoice number exists
         table = wait.until(
@@ -911,4 +801,18 @@ def tester_function(results, driver=None):
     finally:
         if quit_after:
             driver.quit()
+
+def retrying_find_element(driver, condition_function, element_id):
+    attempts = 0
+    while attempts < 2:
+        try:
+            result = WebDriverWait(driver, 10).until(
+                condition_function((By.ID, element_id))
+            )
+            return result
+        except Exception as e:
+            attempts += 1
+    return WebDriverWait(driver, 10).until(
+        condition_function((By.ID, element_id))
+    )
 
