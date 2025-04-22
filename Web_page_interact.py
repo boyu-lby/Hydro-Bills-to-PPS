@@ -41,7 +41,9 @@ def login(driver):
     #    - "i0116" (older)
     #    - "loginfmt" (common)
     #    - Or use driver.find_element(By.NAME, "loginfmt")
-    email_input = retrying_find_element(driver, EC.element_to_be_clickable, "loginfmt")
+    email_input = WebDriverWait(driver, 10).until(
+        EC.element_to_be_clickable((By.ID, "i0116"))
+    )
     email_input.clear()
     email_input.send_keys(ONTARIO_EMAIL)
 
@@ -53,7 +55,9 @@ def login(driver):
     # 5. (Try to) wait for the password field and enter the password.
     # If the browser remembers the password, this step might be skipped, causing a timeout.
     try:
-        password_input = retrying_find_element(driver, EC.element_to_be_clickable, "passwd")
+        password_input = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.ID, "passwd"))
+        )
         password_input.clear()
         password_input.send_keys(ONTARIO_PASSWORD)
 
@@ -68,7 +72,9 @@ def login(driver):
     #    Sometimes you see a prompt with the same button ID "idSIButton9" for "Yes."
     #    Or you might see "idBtn_Back" for "No." Adjust as needed.
     try:
-        stay_signed_in_button = retrying_find_element(driver, EC.element_to_be_clickable, "idSIButton9")
+        stay_signed_in_button = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.ID, "idSIButton9"))
+        )
         stay_signed_in_button.click()
     except:
         print("No 'Stay signed in?' prompt appeared, continuing...")
@@ -804,15 +810,24 @@ def tester_function(results, driver=None):
 
 def retrying_find_element(driver, condition_function, element_id):
     attempts = 0
-    while attempts < 2:
+    max_attempts = 3
+    wait_time = 10
+    
+    while attempts < max_attempts:
         try:
-            result = WebDriverWait(driver, 10).until(
+            result = WebDriverWait(driver, wait_time).until(
                 condition_function((By.ID, element_id))
             )
             return result
-        except Exception as e:
+        except TimeoutException:
             attempts += 1
-    return WebDriverWait(driver, 10).until(
-        condition_function((By.ID, element_id))
-    )
+            if attempts < max_attempts:
+                time.sleep(1)  # Add a small delay between retries
+                print(f"Attempt {attempts} failed to find element {element_id}, retrying...")
+        except Exception as e:
+            print(f"Unexpected error while finding element {element_id}: {str(e)}")
+            raise  # Re-raise unexpected exceptions
+    
+    # If we get here, all attempts failed
+    raise TimeoutException(f"Failed to find element {element_id} after {max_attempts} attempts")
 
