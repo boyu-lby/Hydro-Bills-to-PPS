@@ -1,6 +1,7 @@
 import fitz
 import re
 
+from CustomizedExceptions import UnsaveableError
 from OCR_helper import convert_date
 from scan_helper import get_month_year, convert_to_float, switch_date_and_month, format_date_str
 from datetime import datetime, timedelta
@@ -52,16 +53,17 @@ def parse_elexicon_bill(pdf_path):
     # 2) Statement Date
     # Example snippet: "Jan 07 - Feb 07, 2025
     # Feb 25, 2025"
-    # If this invoice is unmetered, then there is no read period, only statement is available
-    is_unmetered = re.search(r'(Unmetered)', text, re.IGNORECASE)
-    if is_unmetered:
-        match = re.search(r'([A-Za-z]{3}\s*\d{2},\s*\d{4})', text, re.IGNORECASE)
-        if match:
-            extracted_data["statement_date"] = match.group(1).replace(",", "")
+    hasPeriod = False
+    match = re.search(r'[A-Za-z]{3}\s*\d{2}\s*-\s*[A-Za-z]{3}\s*\d{2},\s*\d{4}\s*([A-Za-z]{3}\s*\d{2},\s*\d{4})', text, re.IGNORECASE)
+    if match:
+        extracted_data["statement_date"] = match.group(1).replace(",", "")
+        hasPeriod = True
     else:
-        match = re.search(r'[A-Za-z]{3}\s*\d{2}\s*-\s*[A-Za-z]{3}\s*\d{2},\s*\d{4}\s*([A-Za-z]{3}\s*\d{2},\s*\d{4})', text, re.IGNORECASE)
+        match = re.search(r'([A-Za-z]{3}\s*\d{2},\s*\d{4})\n\d{1,3}(?:,\d{3})*\.\d{1,2}\skWh', text)
         if match:
             extracted_data["statement_date"] = match.group(1).replace(",", "")
+        else:
+            raise UnsaveableError(extracted_data["account_number"], "Application can't find the period, please kindly report this issue to the developer")
 
     # 3) Amount Due
     # Example snippet: "Total Account Balance:
@@ -103,7 +105,7 @@ def parse_elexicon_bill(pdf_path):
         extracted_data["balance_forward"] = convert_to_float(match.group(1).replace(",", "").replace("$", ""))
 
     # 8) Period
-    if is_unmetered:
+    if not hasPeriod:
         print(extracted_data["statement_date"])
         periods = get_previous_month_range(extracted_data["statement_date"])
         extracted_data["period_start_date"] = periods[0]

@@ -6,6 +6,7 @@ from VendorInvoicesExtraction.elexicon import parse_elexicon_bill
 from VendorInvoicesExtraction.fortis_scan import parse_fortis_bill
 from VendorInvoicesExtraction.grimsby import parse_grimsby_bill
 from VendorInvoicesExtraction.hydro_one import parse_hydro_one_bill
+from VendorInvoicesExtraction.oakville import parse_oakville_bill
 from VendorInvoicesExtraction.toronto_hydro_scan import parse_toronto_hydro_bill
 from VendorInvoicesExtraction.welland_scan import parse_welland_bill
 
@@ -20,6 +21,7 @@ def get_invoice_extraction_function(vendor_name: str):
         "Hydro One": parse_hydro_one_bill,
         "NPE": parse_NPE_bill,
         "NTP": parse_NTP_bill,
+        "Oakville": parse_oakville_bill,
         "Toronto Hydro": parse_toronto_hydro_bill,
         "Welland": parse_welland_bill,
     }

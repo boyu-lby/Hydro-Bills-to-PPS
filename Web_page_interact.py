@@ -1,7 +1,7 @@
 import time
 import Global_variables
 from selenium import webdriver
-from selenium.common import TimeoutException
+from selenium.common import TimeoutException, StaleElementReferenceException
 from selenium.webdriver import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait, Select
@@ -166,12 +166,12 @@ def pps_multiple_invoices_input(invoices_todo_lst):
                 "Sheet1", [(invoice[0], "Permission denied")])
             continue
 
-        except Exception as e:
-            insert_tuples_in_excel(Global_variables.failed_invoices_excel_path,
-            "Sheet1", [(invoice[0], "Please report this problem to the developer, " + type(e).__name__)])
-            print(f"{type(e).__name__}: {invoice[0]}")
-            print(str(e))
-            continue
+        # except Exception as e:
+        #     insert_tuples_in_excel(Global_variables.failed_invoices_excel_path,
+        #     "Sheet1", [(invoice[0], "Please report this problem to the developer, " + type(e).__name__)])
+        #     print(f"{type(e).__name__}: {invoice[0]}")
+        #     print(str(e))
+        #     continue
 
         else:
             if info is not None:
@@ -231,12 +231,8 @@ def pps_single_invoice_input(results, driver=None) -> int:
         retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_pbSearch").click()
 
         # Wait for results table and process rows
-        table = wait.until(
-            EC.presence_of_element_located((By.ID, "contentPlaceHolder_searchResult"))
-        )
-
         # Get all rows inside the table
-        rows = table.find_elements(By.TAG_NAME, "tr")
+        rows = retrying_find_element(driver, EC.presence_of_element_located, "contentPlaceHolder_searchResult").find_elements(By.TAG_NAME, "tr")
 
         approved_rows = []
         for row in rows:
@@ -346,9 +342,7 @@ def pps_single_invoice_input(results, driver=None) -> int:
         # Press 'Add New Line'
         retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_newLine").click()
         # Select amount type
-        dropdown_menu = wait.until(
-            EC.presence_of_element_located((By.ID, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_accountDescription"))
-        )
+        dropdown_menu = retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_accountDescription")
         select_dropdown = Select(dropdown_menu)
         select_dropdown.select_by_visible_text("Electricity")
         # Input amount
@@ -371,11 +365,7 @@ def pps_single_invoice_input(results, driver=None) -> int:
             # Press 'Add New Line'
             retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_newLine").click()
             # Select amount type
-            dropdown_menu = wait.until(
-                EC.presence_of_element_located(
-                    (By.ID, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_accountDescription"))
-            )
-            select_dropdown = Select(dropdown_menu)
+            select_dropdown = Select(retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_accountDescription"))
             select_dropdown.select_by_visible_text("Late Payment Charges")
             # Input amount
             retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_amount").send_keys(str(results["Late Payment Charge"]).replace(",", ""))
@@ -398,11 +388,7 @@ def pps_single_invoice_input(results, driver=None) -> int:
             # Press 'Add New Line'
             retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_newLine").click()
             # Select amount type
-            dropdown_menu = wait.until(
-                EC.presence_of_element_located(
-                    (By.ID, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_accountDescription"))
-            )
-            select_dropdown = Select(dropdown_menu)
+            select_dropdown = Select(retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_accountDescription"))
             select_dropdown.select_by_visible_text("Electricity (Tax Exempt)")
             # Input amount
             retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_amount").send_keys(ETE)
@@ -493,13 +479,18 @@ def get_remaining_funding(driver, results) -> float:
     wait = WebDriverWait(driver, 10)  # up to 10 seconds
 
     # Iterate through all fiscal year, calculate the remaining amount for this fiscal year
-    table = wait.until(
-        EC.presence_of_element_located((By.ID, "contentPlaceHolder_financialControl_distribution_gridFiscal"))
-    )
-
     # Get current fiscal year
     current_fiscal_year = 0
-    rows = table.find_elements(By.TAG_NAME, "tr")
+    for attempt in range(2):
+        try:
+            table = driver.find_element(By.ID, "contentPlaceHolder_financialControl_distribution_gridFiscal")
+            rows = table.find_elements(By.TAG_NAME, "tr")
+            break  # success, exit loop
+        except StaleElementReferenceException:
+            if attempt < 2 - 1:
+                time.sleep(1)  # optional: wait a bit before retrying
+            else:
+                raise  # re-raise if last attempt
     for row in rows[1:]:
         # Find all cells in the row
         cells = row.find_elements(By.TAG_NAME, "td")
@@ -511,7 +502,6 @@ def get_remaining_funding(driver, results) -> float:
         raise UnsaveableError(results['account_number'], 'Unable to find current fiscal year. Please contact the developer for this problem')
 
     # Get all rows inside the table
-    rows = table.find_elements(By.TAG_NAME, "tr")
     is_future_fiscal_year = False
     for row in rows:
         # Find all cells in the row
@@ -820,6 +810,11 @@ def retrying_find_element(driver, condition_function, element_id):
             )
             return result
         except TimeoutException:
+            attempts += 1
+            if attempts < max_attempts:
+                time.sleep(1)  # Add a small delay between retries
+                print(f"Attempt {attempts} failed to find element {element_id}, retrying...")
+        except StaleElementReferenceException:
             attempts += 1
             if attempts < max_attempts:
                 time.sleep(1)  # Add a small delay between retries
