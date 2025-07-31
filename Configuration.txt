@@ -1,7 +1,3 @@
 boyu.li@ontario.ca
 Vbybyvbyby200!
 C:\Users\LiBo3\Downloads
-False,
-True,20000
-True,3
-True,1

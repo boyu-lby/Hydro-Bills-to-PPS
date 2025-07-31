@@ -35,8 +35,8 @@ def convert_month_abbr(three_letter_month):
         "Feb": "Fe",
         # Decide how you want to handle March vs. May:
         "Mar": "Mr",  # Example: "Mar" => "Mr"
-        "Apr": "Ap",
-        "May": "My",  # Example: "May" => "My"
+        "Apr": "Al",
+        "May": "Ma",  # Example: "May" => "My"
         # Decide how you want to handle June vs. July:
         "Jun": "Jn",  # Example: "Jun" => "Jn"
         "Jul": "Jl",  # Example: "Jul" => "Jl"

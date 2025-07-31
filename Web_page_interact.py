@@ -1,82 +1,42 @@
 import time
 import Global_variables
-from selenium import webdriver
-from selenium.common import TimeoutException, StaleElementReferenceException
-from selenium.webdriver import Keys
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait, Select
-from selenium.webdriver.support import expected_conditions as EC
+from playwright.sync_api import sync_playwright, Page, Browser, BrowserContext, TimeoutError as PlaywrightTimeoutError
+from playwright.sync_api._generated import Error as PlaywrightError
 
 from Excel_helper import read_column_values, populate_invoice_numbers, delete_cell_content_if_matches, \
     insert_tuples_in_excel, read_cell_content_from_first_two_col
 from OCR_helper import convert_month_abbr, get_today_date
 from VendorInvoicesExtraction.Get_invoice_extraction import get_invoice_extraction_function
-from VendorInvoicesExtraction.NPE import parse_NPE_bill
-from VendorInvoicesExtraction.NTP import parse_NTP_bill
-from VendorInvoicesExtraction.alectra_scan import parse_alectra_bill
-from VendorInvoicesExtraction.burlington_hydro_scan import parse_burlington_hydro_bill
 from CustomizedExceptions import RequestApprovalError, InvoiceScanError, AmountError, PendingPaymentError, AccountNumberError, ExtractedDataUnmatchError, UnsaveableError
-from VendorInvoicesExtraction.elexicon import parse_elexicon_bill
-from VendorInvoicesExtraction.fortis_scan import parse_fortis_bill
-from VendorInvoicesExtraction.grimsby import parse_grimsby_bill
-from VendorInvoicesExtraction.hydro_one import parse_hydro_one_bill
-from VendorInvoicesExtraction.toronto_hydro_scan import parse_toronto_hydro_bill
-from VendorInvoicesExtraction.welland_scan import parse_welland_bill
 from scan_helper import find_file_with_substring, self_check, copy_as_pdf_in_original_and_destination, convert_to_float, \
     calculate_fiscal_year, months_to_next_fiscal_period, months_since_invoice, parse_invoice_date
 
 TARGET_URL = "https://pps.mto.ad.gov.on.ca/Home.aspx"
 
-def login(driver):
+def login(page: Page):
     ONTARIO_EMAIL = Global_variables.ontario_email
     ONTARIO_PASSWORD = Global_variables.ontario_password
 
-    # 2. Navigate to Microsoft login page.
-    #    Often, just going to your target URL will redirect you to the MS login page,
-    #    but you can also go directly to https://login.microsoftonline.com/ if needed.
-    driver.get("https://login.microsoftonline.com/")
+    # Navigate to Microsoft login page
+    page.goto("https://login.microsoftonline.com/")
 
-    # 3. Enter email/username.
-    #    Common IDs or names:
-    #    - "i0116" (older)
-    #    - "loginfmt" (common)
-    #    - Or use driver.find_element(By.NAME, "loginfmt")
-    email_input = WebDriverWait(driver, 10).until(
-        EC.element_to_be_clickable((By.ID, "i0116"))
-    )
-    email_input.clear()
-    email_input.send_keys(ONTARIO_EMAIL)
+    # Enter email/username
+    page.fill("#i0116", ONTARIO_EMAIL)
+    page.click("#idSIButton9")
 
-    # 4. Click the "Next" button.
-    #    The "Next" button often has ID "idSIButton9"
-    next_button = driver.find_element(By.ID, "idSIButton9")
-    next_button.click()
-
-    # 5. (Try to) wait for the password field and enter the password.
-    # If the browser remembers the password, this step might be skipped, causing a timeout.
+    # Wait for and fill password if needed
     try:
-        password_input = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.ID, "passwd"))
-        )
-        password_input.clear()
-        password_input.send_keys(ONTARIO_PASSWORD)
-
-        sign_in_button = driver.find_element(By.ID, "idSIButton9")
-        sign_in_button.click()
-    except TimeoutException:
-        # If we get here, the password field didn't appear within 5 seconds,
-        # likely because the browser skipped or auto‐filled the password step.
+        page.wait_for_selector("#passwd", timeout=10000)
+        page.fill("#passwd", ONTARIO_PASSWORD)
+        page.click("#idSIButton9")
+    except PlaywrightTimeoutError:
         print("Password field did not appear; continuing...")
 
-    # 7. (Optional) Handle "Stay signed in?" screen.
-    #    Sometimes you see a prompt with the same button ID "idSIButton9" for "Yes."
-    #    Or you might see "idBtn_Back" for "No." Adjust as needed.
+    # Handle "Stay signed in?" screen
     try:
-        stay_signed_in_button = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.ID, "idSIButton9"))
-        )
-        stay_signed_in_button.click()
-    except:
+        page.wait_for_selector("#idSIButton9", timeout=10000)
+        page.click("#idSIButton9")
+    except PlaywrightTimeoutError:
         print("No 'Stay signed in?' prompt appeared, continuing...")
 
 def get_invoice_dir_path():
@@ -99,358 +59,343 @@ def pps_multiple_invoices_input(invoices_todo_lst):
     """
     # Read email and password from config
 
-
     # Login in
-    driver = webdriver.Chrome()
-    login(driver)
+    with sync_playwright() as p:
+        browser = p.chromium.launch(
+            headless=False,  # Set False to see the browser window
+            slow_mo=100  # Slow down operations by 100ms for better visibility
+        )
+        context = browser.new_context(
+            viewport={'width': 1920, 'height': 1080}  # Set a large viewport
+        )
+        page = context.new_page()
+        # Set the page to scrollable
+        page.add_init_script("""
+            document.documentElement.style.overflow = 'auto';
+            document.body.style.overflow = 'auto';
+            document.body.style.minHeight = '100vh';
+        """)
+        # Login Microsoft account
+        login(page)
 
-    succeed_invoices = []
+        succeed_invoices = []
 
-    # Iterate all invoices
-    for invoice in invoices_todo_lst:
-        # invoice[0] is account number, invoice[1] is vendor
-        print('-----------------------------')
-        if invoice is None or invoice[0] is None:
-            continue
+        agreementNumberMap = {
+            "Alectra": "2025-M-0002",
+            "Burlington Hydro": "2025-M-0014",
+            "Elexicon": "2025-M-0003",
+            "Fortis": "2025-M-0022",
+            "Grimsby": "2025-M-0012",
+            "NPE": "2025-M-0004",
+            "Oakville": "2025-M-0008",
+            "Toronto Hydro": "2025-M-0006",
+            "Welland": "2025-M-0011",
+        }
 
-        # Skip empty vendor invoice
-        if invoice[1] is None or invoice[1].replace(" ", "") == "":
-            continue
+        # Iterate all invoices
+        for invoice in invoices_todo_lst:
+            # invoice[0] is account number, invoice[1] is vendor
+            print('-----------------------------')
+            if invoice is None or invoice[0] is None:
+                continue
 
-        print(f"Start inputting '{invoice[0]}'")
-        info = None
-        try:
-            # Scan the invoice PDF and extract the data
-            pdf_file_path = find_file_with_substring(get_invoice_dir_path(), str(invoice[0]))
-            # Use right invoice scanning method
-            scanning_method = get_invoice_extraction_function(invoice[1])
-            results = scanning_method(pdf_file_path)
-            if results is None:
-                print(f"Invalid Vendor Name: {invoice[1]}")
-                raise UnsaveableError(invoice[0], 'Invalid vendor name')
+            # Skip empty vendor invoice
+            if invoice[1] is None or invoice[1].replace(" ", "") == "":
+                continue
 
-            for key, value in results.items():
-                print(f"{key}: {value}")
+            print(f"Start inputting '{invoice[0]}'")
+            info = None
+            try:
+                # Scan the invoice PDF and extract the data
+                pdf_file_path = find_file_with_substring(get_invoice_dir_path(), str(invoice[0]))
+                # Use right invoice scanning method
+                scanning_method = get_invoice_extraction_function(invoice[1])
+                results = scanning_method(pdf_file_path)
+                if results is None:
+                    print(f"Invalid Vendor Name: {invoice[1]}")
+                    raise UnsaveableError(invoice[0], 'Invalid vendor name')
 
-            # Check invoice[0] (account number) match the account number in PDF
-            if invoice[0].replace('-', '') not in results['account_number'].replace('-', '') and results['account_number'].replace('-', '') not in invoice[0].replace('-', ''):
-                raise UnsaveableError(invoice[0], f"The data in file named '{invoice[0]}' contains the data of '{results['account_number']}'")
+                for key, value in results.items():
+                    print(f"{key}: {value}")
 
-            # Check data is reasonable or not
-            if not self_check(results):
-                raise AmountError(invoice[0])
+                # Check invoice[0] (account number) match the account number in PDF
+                if invoice[0].replace('-', '') not in results['account_number'].replace('-', '') and results['account_number'].replace('-', '') not in invoice[0].replace('-', ''):
+                    raise UnsaveableError(invoice[0], f"The data in file named '{invoice[0]}' contains the data of '{results['account_number']}'")
 
-            # Input data into PPS
-            indicator = pps_single_invoice_input(results, driver)
+                # Check data is reasonable or not
+                if not self_check(results):
+                    raise AmountError(invoice[0])
 
-            # Rename the PDF, save into "Temp Hydro Invoices"
-            copy_as_pdf_in_original_and_destination(pdf_file_path,
-                                                    Global_variables.renamed_invoices_dir_path,
-                                                    results["suggested_file_name"])
+                # Input data into PPS
+                indicator = pps_single_invoice_input(results, agreementNumberMap[invoice[1]], page)
 
-            info = (results["account_number"], results["suggested_file_name"][-7:], results["invoice_subtotal"])
+                # Rename the PDF, save into "Temp Hydro Invoices"
+                copy_as_pdf_in_original_and_destination(pdf_file_path,
+                                                        Global_variables.renamed_invoices_dir_path,
+                                                        results["suggested_file_name"])
 
-        except UnsaveableError as e:
-            insert_tuples_in_excel(Global_variables.failed_invoices_excel_path,
-                "Sheet1", [(invoice[0], e.message)])
-            continue
+                info = (results["account_number"], results["suggested_file_name"][-7:], results["invoice_subtotal"], results["amount_due"])
 
-        except RequestApprovalError as e:
-            populate_invoice_numbers(Global_variables.saved_invoices_excel_path,
-                "Sheet1", "Invoice Number", [invoice[0]])
-            print(f"RequestApprovalError: {invoice[0]}")
-            continue
+            except UnsaveableError as e:
+                insert_tuples_in_excel(Global_variables.failed_invoices_excel_path,
+                    "Sheet1", [(invoice[0], e.message)])
+                continue
 
-        except PermissionError as e:
-            insert_tuples_in_excel(Global_variables.failed_invoices_excel_path,
-                "Sheet1", [(invoice[0], "Permission denied")])
-            continue
+            except RequestApprovalError as e:
+                populate_invoice_numbers(Global_variables.saved_invoices_excel_path,
+                    "Sheet1", "Invoice Number", [invoice[0]])
+                print(f"RequestApprovalError: {invoice[0]}")
+                continue
 
-        # except Exception as e:
-        #     insert_tuples_in_excel(Global_variables.failed_invoices_excel_path,
-        #     "Sheet1", [(invoice[0], "Please report this problem to the developer, " + type(e).__name__)])
-        #     print(f"{type(e).__name__}: {invoice[0]}")
-        #     print(str(e))
-        #     continue
+            except PermissionError as e:
+                insert_tuples_in_excel(Global_variables.failed_invoices_excel_path,
+                    "Sheet1", [(invoice[0], "Permission denied")])
+                continue
 
-        else:
-            if info is not None:
-                if indicator == 2:
-                    print(f"{info[0]} is successfully inputted")
-                    insert_tuples_in_excel(Global_variables.succeed_invoices_excel_path,
-                        "Sheet1", [info])
-                elif indicator == 1:
-                    print(f"{info[0]} is successfully requested for funding, and payment is saved as draft")
-                    insert_tuples_in_excel(Global_variables.funding_requested_excel_path,
-                        "Sheet1", [info])
-        finally:
-            delete_cell_content_if_matches(Global_variables.todo_invoices_excel_path,
-                "Sheet1", "Invoice Number", invoice[0])
-    driver.quit()
+            except Exception as e:
+                insert_tuples_in_excel(Global_variables.failed_invoices_excel_path,
+                "Sheet1", [(invoice[0], "Please report this problem to the developer, " + type(e).__name__)])
+                print(f"{type(e).__name__}: {invoice[0]}")
+                print(str(e))
+                continue
 
-def pps_single_invoice_input(results, driver=None) -> int:
+            else:
+                if info is not None:
+                    if indicator == 2:
+                        print(f"{info[0]} is successfully inputted")
+                        insert_tuples_in_excel(Global_variables.succeed_invoices_excel_path,
+                            "Sheet1", [info])
+                    elif indicator == 1:
+                        print(f"{info[0]} is successfully requested for funding, and payment is saved as draft")
+                        insert_tuples_in_excel(Global_variables.funding_requested_excel_path,
+                            "Sheet1", [info])
+            finally:
+                delete_cell_content_if_matches(Global_variables.todo_invoices_excel_path,
+                    "Sheet1", "Invoice Number", invoice[0])
+        context.close()
+        browser.close()
+
+def pps_single_invoice_input(results, agreementNumber:str, page: Page = None) -> int:
     """
-    :param results:
-    :param driver:
+    :param results: Invoice data
+    :param agreementNumber: agreement number for the summary billing
+    :param page: Playwright page object
     :return: 1 indicates requested funding, 2 indicates requested payment approval
     """
-    # Check if amount is greater that the maximum amount threshold
-    if convert_to_float(results["amount_due"]) > Global_variables.max_payment_need_validate:
-        raise UnsaveableError(results['account_number'], "Exceeds maximum amount threshold")
 
-    # 1. Launch browser (make sure you have installed ChromeDriver or another WebDriver)
+    # Launch browser if not provided
     quit_after = False
-    if driver is None:
-        driver = webdriver.Chrome()
-        quit_after = True
-        login(driver)
+    if page is None:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                headless=False,  # Set to False to see the browser window
+                slow_mo=100  # Slow down operations by 100ms for better visibility
+            )
+            context = browser.new_context(
+                viewport={'width': 1920, 'height': 1080}  # Set a large viewport
+            )
+            page = context.new_page()
+            quit_after = True
+            login(page)
 
     try:
-        # 8. Now that you're logged in, navigate to your actual target URL
-        driver.get(TARGET_URL)
+        # Navigate to target URL and wait for network to be idle
+        page.goto(TARGET_URL, wait_until="networkidle")
 
-        # 9. At this point, you should be in your authenticated session.
+        # Click on the tab and view/update link
+        page.click("#contentPlaceHolder_tabControl1_tabA4")
+        page.wait_for_load_state("networkidle")
+        
+        # Wait for and click the view/update link
+        page.wait_for_selector('//a[@class="homeLink" and contains(@href, "AwardTypeId=8")][text()="View/Update"]')
+        page.click('//a[@class="homeLink" and contains(@href, "AwardTypeId=8")][text()="View/Update"]')
+        page.wait_for_load_state("networkidle")
 
-        # Wait for the link to be present in the DOM
-        wait = WebDriverWait(driver, 10)  # up to 10 seconds
+        # Input account number and wait for the input to be ready
+        page.wait_for_selector("#contentPlaceHolder_awardNumber")
+        page.fill("#contentPlaceHolder_awardNumber", agreementNumber)
 
-        driver.find_element(By.ID, "contentPlaceHolder_tabControl1_tabA4").click()
-        view_update_link = wait.until(EC.element_to_be_clickable((
-            By.XPATH,
-            '//a[@class="homeLink" and contains(@href, "AwardTypeId=8")][text()="View/Update"]'
-        )))
-        # Click the link
-        view_update_link.click()
+        # Press search and wait for results
+        page.click("#contentPlaceHolder_pbSearch")
+        page.wait_for_load_state("networkidle")
 
-        # Input account number
-        account_number_input_bar = retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_utilityAccount")
-        account_number_input_bar.clear()
-        account_number_input_bar.send_keys(results["account_number"].replace("-", "").replace(" ", ""))
+        # Process search results
+        page.wait_for_selector("#contentPlaceHolder_searchResult")
+        table = page.query_selector("#contentPlaceHolder_searchResult")
+        if not table:
+            raise UnsaveableError(results['account_number'], "Search results table not found")
 
-        # Press 'search' for account number
-        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_pbSearch").click()
-
-        # Wait for results table and process rows
         # Get all rows inside the table
-        rows = retrying_find_element(driver, EC.presence_of_element_located, "contentPlaceHolder_searchResult").find_elements(By.TAG_NAME, "tr")
-
+        rows = table.query_selector_all("tr")
         approved_rows = []
+        
         for row in rows:
-            # Find all cells in the row
-            cells = row.find_elements(By.TAG_NAME, "td")
-
-            # We need at least 2 cells: first cell is clickable text, second cell is 'Approved' or 'Completed'
+            cells = row.query_selector_all("td")
             if len(cells) >= 2:
-                status_text = cells[1].text.strip()
+                status_text = cells[1].inner_text().strip()
                 if status_text == "Approved":
                     approved_rows.append(row)
 
-            # Check if exactly one row has 'Approved'
         if len(approved_rows) == 1:
-            # Find the first cell of that row and click the clickable link inside it
-            row = approved_rows[0]
-            # Typically the first cell might contain a link, e.g. <td><a>Clickable Text</a></td>
-            first_cell = row.find_elements(By.TAG_NAME, "td")[0]
-            clickable_link = first_cell.find_element(By.TAG_NAME, "a")
-            clickable_link.click()
+            # Wait for the link to be clickable
+            link = approved_rows[0].query_selector("td a")
+            if not link:
+                raise UnsaveableError(results['account_number'], "Approved row link not found")
+            link.click()
+            page.wait_for_load_state("networkidle")
             print("Clicked on the only row with 'Approved'.")
         else:
             raise UnsaveableError(results['account_number'], 'Expected to find only one approved account, but found zero or more than one approved account')
 
-        # Check if 'Do not pay' is written in comments
-        comments = retrying_find_element(driver, EC.visibility_of_element_located, "contentPlaceHolder_agreementControl_ctl00_description").get_attribute("value")
+        # Check comments
+        page.wait_for_selector("#contentPlaceHolder_agreementControl_ctl00_description")
+        comments = page.locator("#contentPlaceHolder_agreementControl_ctl00_description").input_value()
         comments = comments.replace(' ', '').replace('-', '').replace("'", '')
         if 'DONOTPAY' in comments or 'DONTPAY' in comments:
             raise UnsaveableError(results['account_number'], "Found 'Do not pay' in comments")
 
         # Press 'invoice' to see all invoices
-        retrying_find_element(driver, EC.element_to_be_clickable, "tabControl_InvoicesTab_HyperLink").click()
+        page.click("#tabControl_InvoicesTab_HyperLink")
+        page.wait_for_load_state("networkidle")
 
         # Check if any payment is pending and if the suggested invoice number exists
-        table = wait.until(
-            EC.presence_of_element_located((By.ID, "contentPlaceHolder_invoiceControl_invoices"))
-        )
-        # Get all rows inside the table
-        rows = table.find_elements(By.TAG_NAME, "tr")
-        asserted_invoice_rows = []
+        page.wait_for_selector("#contentPlaceHolder_invoiceControl_invoices")
+        table = page.query_selector("#contentPlaceHolder_invoiceControl_invoices")
+        if not table:
+            raise UnsaveableError(results['account_number'], "Invoice table not found")
+
+        rows = table.query_selector_all("tr")
         index = 0
-        is_period_checked = False
         for row in rows:
-            # Find all cells in the row
-            cells = row.find_elements(By.TAG_NAME, "td")
+            cells = row.query_selector_all("td")
             if len(cells) <= 9:
                 continue
-            # Check if last element contains text 'Pending Payment'
-            status_text = cells[5].text.strip()
-            if status_text == "Pending Payment" and index < 20:
-                raise PendingPaymentError(results["account_number"])
-            # Check first two asserted invoices, check if they haven't been paid for a long time
-            elif status_text == "Asserted":
-                asserted_invoice_rows.append(cells)
-                try:
-                    month_gap = months_since_invoice(cells[0].text.strip())
-                except ValueError as e:
-                    continue
-                if Global_variables.is_period_validation_needed and (not is_period_checked) and month_gap >= Global_variables.period_need_validate:
-                    raise UnsaveableError(results["account_number"], "This account haven't been paid for a long time")
-                is_period_checked = True
 
-            invoice_number_text = cells[0].text.strip()
+            invoice_number_text = cells[0].inner_text().strip()
             invoice_name = results["account_number"].replace("-", "").replace(' ', '') + convert_month_abbr(
                 results["suggested_file_name"][-7:-4]) + results["suggested_file_name"][-2:]
+            status_text = cells[5].inner_text().strip()
             if invoice_number_text.replace("-", "").replace(' ', '') == invoice_name and status_text != 'Cancelled':
                 raise UnsaveableError(results['account_number'], f"{invoice_name} is already exists in PPS")
             index += 1
 
-        # Check if the invoice amount is abnormally large
-        if Global_variables.is_abnormal_amount_validation_needed:
-            validate_abnormally_large_amount(results, asserted_invoice_rows)
-
         # Check if enough funding in account
         indicator = 2
-        requested = check_and_request_funding(driver, results)
+        requested = check_and_request_funding(page, results)
         if requested:
             indicator = 1
 
         # Press 'invoice' to see all invoices
-        retrying_find_element(driver, EC.element_to_be_clickable, "tabControl_InvoicesTab_HyperLink").click()
+        page.click("#tabControl_InvoicesTab_HyperLink")
 
         # Press 'new invoice' to creat a new invoice
-        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_invoiceControl_btnNewInvoice").click()
+        page.click("#contentPlaceHolder_invoiceControl_btnNewInvoice")
 
         # Input account number
         temp_input_text = results["account_number"].replace("-", "").replace(' ', '') + convert_month_abbr(results["suggested_file_name"][-7:-4]) + results["suggested_file_name"][-2:]
-        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_ctl00_txtInvoiceNumber").send_keys(temp_input_text)
+        page.fill("#contentPlaceHolder_ContentPlaceHolder1_ctl00_txtInvoiceNumber", temp_input_text)
 
         # Input period-to
-        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_ctl00_workPeriodFrom").send_keys(results["period_start_date"]+Keys.ENTER)
+        page.fill("#contentPlaceHolder_ContentPlaceHolder1_ctl00_workPeriodFrom", results["period_start_date"] + "\n")
         # Input period-from
-        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_ctl00_workPeriodTo").send_keys(results["period_end_date"]+Keys.ENTER)
+        page.fill("#contentPlaceHolder_ContentPlaceHolder1_ctl00_workPeriodTo", results["period_end_date"] + "\n")
         # Input statement period
-        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_ctl00_invoiceDate").send_keys(results["statement_date"]+Keys.ENTER)
+        page.fill("#contentPlaceHolder_ContentPlaceHolder1_ctl00_invoiceDate", results["statement_date"] + "\n")
         # Input current date
-        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_ctl00_dateReceived").send_keys(get_today_date()+Keys.ENTER)
+        page.fill("#contentPlaceHolder_ContentPlaceHolder1_ctl00_dateReceived", get_today_date() + "\n")
         # Input invoice subtotal
-        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_ctl00_summaryInvoiceTotal").send_keys(str(results["invoice_subtotal"]))
+        page.fill("#contentPlaceHolder_ContentPlaceHolder1_ctl00_summaryInvoiceTotal", str(results["invoice_subtotal"]))
         # Input H.S.T.
-        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_ctl00_summaryHSTTotal").send_keys(str(results["hst"]))
+        page.fill("#contentPlaceHolder_ContentPlaceHolder1_ctl00_summaryHSTTotal", str(results["hst"]))
         # Input comment.
-        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_ctl00_commentsBox").send_keys(results["suggested_file_name"][-7:-4] + " " + results["suggested_file_name"][-4:])
+        page.fill("#contentPlaceHolder_ContentPlaceHolder1_ctl00_commentsBox", results["suggested_file_name"][-7:-4] + " " + results["suggested_file_name"][-4:])
         # Press 'Line Items' to specify amount detail
-        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_btnNext").click()
+        page.click("#contentPlaceHolder_btnNext")
 
         # Press 'Add New Line'
-        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_newLine").click()
+        page.click("#contentPlaceHolder_ContentPlaceHolder1_invoiceLines_newLine")
         # Select amount type
-        dropdown_menu = retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_accountDescription")
-        select_dropdown = Select(dropdown_menu)
-        select_dropdown.select_by_visible_text("Electricity")
+        dropdown_menu = page.query_selector("#contentPlaceHolder_ContentPlaceHolder1_invoiceLines_accountDescription")
+        dropdown_menu.select_option("Electricity")
         # Input amount
-        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_amount").send_keys(str(results["total_electricity_charges"]).replace(",", ""))
+        page.fill("#contentPlaceHolder_ContentPlaceHolder1_invoiceLines_amount", str(results["total_electricity_charges"]).replace(",", ""))
         # Press 'Update'
-        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_btnSave").click()
+        page.click("#contentPlaceHolder_ContentPlaceHolder1_invoiceLines_btnSave")
         # Check if amount inputted succeed
-        elements = driver.find_elements(By.XPATH, "//li[normalize-space()='Line Amount is mandatory.']")
+        elements = page.query_selector_all("//li[normalize-space()='Line Amount is mandatory.']")
         times = 0
         while elements and times < 10:
             time.sleep(0.5)
             print('wait')
-            retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_amount").send_keys(str(results["total_electricity_charges"]).replace(",", ""))
-            retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_btnSave").click()
-            elements = driver.find_elements(By.XPATH, "//li[normalize-space()='Line Amount is mandatory.']")
+            page.fill("#contentPlaceHolder_ContentPlaceHolder1_invoiceLines_amount", str(results["total_electricity_charges"]).replace(",", ""))
+            page.click("#contentPlaceHolder_ContentPlaceHolder1_invoiceLines_btnSave")
+            elements = page.query_selector_all("//li[normalize-space()='Line Amount is mandatory.']")
             times += 1
 
         # Input Late Payment Charges Info
         if results["Late Payment Charge"] is not None and results["Late Payment Charge"] != 0:
             # Press 'Add New Line'
-            retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_newLine").click()
+            page.click("#contentPlaceHolder_ContentPlaceHolder1_invoiceLines_newLine")
             # Select amount type
-            select_dropdown = Select(retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_accountDescription"))
-            select_dropdown.select_by_visible_text("Late Payment Charges")
+            select_dropdown = page.query_selector("#contentPlaceHolder_ContentPlaceHolder1_invoiceLines_accountDescription")
+            select_dropdown.select_option("Late Payment Charges")
             # Input amount
-            retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_amount").send_keys(str(results["Late Payment Charge"]).replace(",", ""))
+            page.fill("#contentPlaceHolder_ContentPlaceHolder1_invoiceLines_amount", str(results["Late Payment Charge"]).replace(",", ""))
             # Press 'Update'
-            retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_btnSave").click()
+            page.click("#contentPlaceHolder_ContentPlaceHolder1_invoiceLines_btnSave")
             # Check if amount inputted succeed
-            elements = driver.find_elements(By.XPATH, "//li[normalize-space()='Line Amount is mandatory.']")
+            elements = page.query_selector_all("//li[normalize-space()='Line Amount is mandatory.']")
             times = 0
             while elements and times < 10:
                 time.sleep(0.5)
                 print('wait')
-                retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_amount").send_keys(str(results["Late Payment Charge"]).replace(",", ""))
-                retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_btnSave").click()
-                elements = driver.find_elements(By.XPATH, "//li[normalize-space()='Line Amount is mandatory.']")
+                page.fill("#contentPlaceHolder_ContentPlaceHolder1_invoiceLines_amount", str(results["Late Payment Charge"]).replace(",", ""))
+                page.click("#contentPlaceHolder_ContentPlaceHolder1_invoiceLines_btnSave")
+                elements = page.query_selector_all("//li[normalize-space()='Line Amount is mandatory.']")
                 times += 1
 
         # Input Electricity (Tax Exempt) Info
         ETE = round(results["balance_forward"] + results["ontario_electricity_rebate"], 2)
         if ETE is not None and ETE != 0:
             # Press 'Add New Line'
-            retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_newLine").click()
+            page.click("#contentPlaceHolder_ContentPlaceHolder1_invoiceLines_newLine")
             # Select amount type
-            select_dropdown = Select(retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_accountDescription"))
-            select_dropdown.select_by_visible_text("Electricity (Tax Exempt)")
+            select_dropdown = page.query_selector("#contentPlaceHolder_ContentPlaceHolder1_invoiceLines_accountDescription")
+            select_dropdown.select_option("Electricity (Tax Exempt)")
             # Input amount
-            retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_amount").send_keys(ETE)
+            page.fill("#contentPlaceHolder_ContentPlaceHolder1_invoiceLines_amount", str(ETE))
             # Press 'Update'
-            retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_btnSave").click()
+            page.click("#contentPlaceHolder_ContentPlaceHolder1_invoiceLines_btnSave")
             # Check if amount inputted succeed
-            elements = driver.find_elements(By.XPATH, "//li[normalize-space()='Line Amount is mandatory.']")
+            elements = page.query_selector_all("//li[normalize-space()='Line Amount is mandatory.']")
             times = 0
             while elements and times < 10:
                 time.sleep(0.5)
                 print('wait')
-                retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_amount").send_keys(ETE)
+                page.fill("#contentPlaceHolder_ContentPlaceHolder1_invoiceLines_amount", str(ETE))
                 # Press 'Update'
-                retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_invoiceLines_btnSave").click()
-                elements = driver.find_elements(By.XPATH, "//li[normalize-space()='Line Amount is mandatory.']")
+                page.click("#contentPlaceHolder_ContentPlaceHolder1_invoiceLines_btnSave")
+                elements = page.query_selector_all("//li[normalize-space()='Line Amount is mandatory.']")
                 times += 1
 
         # Check if the line items match
-        message_text = retrying_find_element(driver, EC.visibility_of_element_located, "PPSHeader_messageText")
-        if message_text.text.strip() != "The line items total matches the invoice total.":
+        message_text = page.query_selector("#PPSHeader_messageText")
+        if message_text.inner_text().strip() != "The line items total matches the invoice total.":
             raise ExtractedDataUnmatchError(results["account_number"])
 
         # Press 'Confirmation'
-        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_btnNext").click()
+        page.click("#contentPlaceHolder_btnNext")
 
         # Press 'Save As Pending Payment'
-        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_btnSaveAsPendingPayment").click()
+        page.click("#contentPlaceHolder_ContentPlaceHolder1_btnSaveAsPendingPayment")
 
-        # Press 'New Payment Certificate'
-        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_TabContainer1_TabPanel4_btnNewPaymentCertificate").click()
-
-        # Input comment again
-        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_paymentCertificateHeader_comments").send_keys(results["suggested_file_name"][-7:-4] + " " + results["suggested_file_name"][-4:])
-
-        # Press 'Confirmation'
-        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_btnNext").click()
-
-        # Check if 'Confirmation' is clicked successfully
-        element = retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_btnNext")
-        times = 0
-        while element and times < 20:
-            try:
-                element.click()
-                element = retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_btnNext")
-            except:
-                pass
-            finally:
-                time.sleep(0.5)
-                times += 1
-
-        # Press 'Save As Draft'
-        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_ContentPlaceHolder1_SavePC").click()
-
-        # Press 'Request Approval'
-        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_TabContainer1_TabPanel4_btnRequestApproval").click()
-
+        
         # Check if the button 'Request Approval' still exists
         error_b_element = None
         try:
-            error_b_element = retrying_find_element(driver, EC.visibility_of_element_located, "contentPlaceHolder_TabContainer1_TabPanel4_btnRequestApproval")
+            error_b_element = page.query_selector("#contentPlaceHolder_TabContainer1_TabPanel4_btnRequestApproval")
 
-        except TimeoutException:
+        except PlaywrightTimeoutError:
             raise UnsaveableError(results['account_number'], 'Web scraping element not found, check account status')
 
         finally:
@@ -459,44 +404,48 @@ def pps_single_invoice_input(results, driver=None) -> int:
                 raise RequestApprovalError(results["account_number"], )
             return indicator
 
+    except PlaywrightError as e:
+        print(f"Playwright error occurred: {str(e)}")
+        raise UnsaveableError(results['account_number'], f"Browser automation error: {str(e)}")
     finally:
-        # 10. Close the browser when done
         if quit_after:
-            driver.quit()
+            page.close()
+            context.close()
+            browser.close()
 
 
-def get_remaining_funding(driver, results) -> float:
+def get_remaining_funding(page: Page, results) -> float:
     """Get the remaining function for the fiscal year which the bill belongs to"""
-    remaining = convert_to_float(retrying_find_element(driver, EC.visibility_of_element_located, "contentPlaceHolder_awardTitle_remaining").text.strip())
+    remaining = convert_to_float(retrying_find_element(page, "#contentPlaceHolder_awardTitle_remaining").inner_text().strip())
 
     # Click 'Financial Information'
-    retrying_find_element(driver, EC.element_to_be_clickable, "tabControl_Financials_HyperLink").click()
+    page.click("#tabControl_Financials_HyperLink")
 
     # Click 'New Adjustment'
-    retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_operationsControl_btnNew").click()
+    page.click("#contentPlaceHolder_operationsControl_btnNew")
 
     # Wait for the link to be present in the DOM
-    wait = WebDriverWait(driver, 10)  # up to 10 seconds
+    wait = page.wait_for_selector("#contentPlaceHolder_financialControl_distribution_gridFiscal", timeout=10000)
 
     # Iterate through all fiscal year, calculate the remaining amount for this fiscal year
     # Get current fiscal year
     current_fiscal_year = 0
     for attempt in range(2):
         try:
-            table = driver.find_element(By.ID, "contentPlaceHolder_financialControl_distribution_gridFiscal")
-            rows = table.find_elements(By.TAG_NAME, "tr")
+            table = page.query_selector("#contentPlaceHolder_financialControl_distribution_gridFiscal")
+            rows = table.query_selector_all("tr")
             break  # success, exit loop
-        except StaleElementReferenceException:
+        except PlaywrightTimeoutError:
             if attempt < 2 - 1:
                 time.sleep(1)  # optional: wait a bit before retrying
             else:
                 raise  # re-raise if last attempt
     for row in rows[1:]:
         # Find all cells in the row
-        cells = row.find_elements(By.TAG_NAME, "td")
-        input_elements = cells[2].find_elements(By.TAG_NAME, "input")
+        cells = row.query_selector_all("td")
+        input_elements = cells[2].query_selector_all("input")
         if input_elements:
-            current_fiscal_year = cells[0].text.strip()
+            current_fiscal_year = cells[0].inner_text().strip()
             break
     if current_fiscal_year == 0:
         raise UnsaveableError(results['account_number'], 'Unable to find current fiscal year. Please contact the developer for this problem')
@@ -505,23 +454,23 @@ def get_remaining_funding(driver, results) -> float:
     is_future_fiscal_year = False
     for row in rows:
         # Find all cells in the row
-        cells = row.find_elements(By.TAG_NAME, "td")
+        cells = row.query_selector_all("td")
 
         if len(cells) < 3:
             continue
 
         if is_future_fiscal_year:
-            remaining -= convert_to_float(cells[1].text.strip())
+            remaining -= convert_to_float(cells[1].inner_text().strip())
         # Check if the fiscal year is current fiscal year'
-        fiscal_year = cells[0].text.strip()
+        fiscal_year = cells[0].inner_text().strip()
         if fiscal_year == current_fiscal_year:
             is_future_fiscal_year = True
 
     return round(remaining, 2)
 
-def check_and_request_funding(driver, results) -> bool:
+def check_and_request_funding(page: Page, results) -> bool:
     # Check if funding is in pending
-    financial_information_button_text = retrying_find_element(driver, EC.visibility_of_element_located, "tabControl_Financials_HyperLink").text.strip()
+    financial_information_button_text = retrying_find_element(page, "#tabControl_Financials_HyperLink").inner_text().strip()
     is_funding_in_pending = False
     if financial_information_button_text == 'Financial (Approval Pending)':
         is_funding_in_pending = True
@@ -530,7 +479,7 @@ def check_and_request_funding(driver, results) -> bool:
         raise UnsaveableError(results['account_number'], 'Funding request is in pending')
 
     # Get remaining funding
-    remaining_funding = get_remaining_funding(driver, results)
+    remaining_funding = get_remaining_funding(page, results)
 
     # Check if funding request is needed
     if convert_to_float(results['amount_due']) <= remaining_funding:
@@ -546,21 +495,19 @@ def check_and_request_funding(driver, results) -> bool:
     print(f"approximate_amount_needed: {str(approximate_amount_needed)}")
 
     # Wait for the link to be present in the DOM
-    wait = WebDriverWait(driver, 10)  # up to 10 seconds
+    wait = page.wait_for_selector("#contentPlaceHolder_financialControl_distribution_gridFiscal", timeout=10000)
 
-    table = wait.until(
-        EC.presence_of_element_located((By.ID, "contentPlaceHolder_financialControl_distribution_gridFiscal"))
-    )
+    table = wait.query_selector("#contentPlaceHolder_financialControl_distribution_gridFiscal")
 
     # Get current fiscal year
     current_fiscal_year = 0
-    rows = table.find_elements(By.TAG_NAME, "tr")
+    rows = table.query_selector_all("tr")
     for row in rows[1:]:
         # Find all cells in the row
-        cells = row.find_elements(By.TAG_NAME, "td")
-        input_elements = cells[2].find_elements(By.TAG_NAME, "input")
+        cells = row.query_selector_all("td")
+        input_elements = cells[2].query_selector_all("input")
         if input_elements:
-            current_fiscal_year = cells[0].text.strip()
+            current_fiscal_year = cells[0].inner_text().strip()
             break
     if current_fiscal_year == 0:
         raise UnsaveableError(results['account_number'], 'Unable to find current fiscal year. Please contact the developer for this problem')
@@ -568,261 +515,45 @@ def check_and_request_funding(driver, results) -> bool:
     is_future_fiscal_year = False
     for row in rows:
         # Find all cells in the row
-        cells = row.find_elements(By.TAG_NAME, "td")
+        cells = row.query_selector_all("td")
 
         if len(cells) < 3:
             continue
 
         # Check if the fiscal year is current fiscal year'
-        fiscal_year = cells[0].text.strip()
+        fiscal_year = cells[0].inner_text().strip()
         if fiscal_year == current_fiscal_year:
-            input_bar = cells[2].find_element(By.TAG_NAME, "input")
-            input_bar.send_keys(str(approximate_amount_needed))
+            input_bar = cells[2].query_selector("input")
+            input_bar.fill(str(approximate_amount_needed))
 
     # Input total amount adjustment
-    amount_input_bar = retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_financialControl_amount")
-    amount_input_bar.clear()
-    amount_input_bar.send_keys(str(approximate_amount_needed))
+    amount_input_bar = retrying_find_element(page, "#contentPlaceHolder_financialControl_amount")
+    amount_input_bar.fill(str(approximate_amount_needed))
 
     # Input description
-    retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_financialControl_comments").send_keys('ADJ')
+    retrying_find_element(page, "#contentPlaceHolder_financialControl_comments", "ADJ")
 
     # Click 'Request Approval
-    retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_operationsControl_btnRequestApproval").click()
+    page.click("#contentPlaceHolder_operationsControl_btnRequestApproval")
 
     return True
 
-def validate_abnormally_large_amount(result, asserted_invoice_rows):
-    """
-    Validates the current invoice amount against historical data.
-    Checks for balance forward and significant amount deviations.
-    
-    Args:
-        result (dict): Current invoice data containing 'suggested_file_name' and 'amount_due'
-        asserted_invoice_rows (list): List of previous invoice records
-        
-    Raises:
-        UnsavableError: If the invoice amount is significantly higher than historical average
-    """
-    if not asserted_invoice_rows:
-        return  # No historical data to compare against
-        
-    # Get current invoice date
-    current_year, current_month = parse_invoice_date(result['suggested_file_name'])
-    
-    # Find the latest invoice date from historical data
-    latest_date = None
-    latest_invoice = None
-    for row in asserted_invoice_rows:
-        try:
-            year, month = parse_invoice_date(row[0].text.strip())
-            if latest_date is None or (year > latest_date[0] or 
-                (year == latest_date[0] and month > latest_date[1])):
-                latest_date = (year, month)
-                latest_invoice = row
-        except ValueError:
-            continue  # Skip invalid invoice numbers
-            
-    if not latest_invoice:
-        return  # No valid historical invoices found
-        
-    # Check for balance forward
-    current_invoice_weight = 1
-    months_diff = (current_year - latest_date[0]) * 12 + (current_month - latest_date[1])
-    if months_diff > 1:
-        current_invoice_weight = months_diff
-        print(f"Warning: {months_diff} months gap detected between invoices. "
-              f"Current: {current_month}/{current_year}, "
-              f"Latest: {latest_date[1]}/{latest_date[0]}")
-    
-    # Calculate weighted average of last 6 months
-    valid_invoices = []
-    for row in asserted_invoice_rows:
-        try:
-            year, month = parse_invoice_date(row[0].text.strip())
-            amount = convert_to_float(row[5].text.strip())
-            if amount is not None:
-                valid_invoices.append({
-                    'year': year,
-                    'month': month,
-                    'amount': amount
-                })
-        except (ValueError, TypeError):
-            continue
-    
-    if not valid_invoices:
-        return  # No valid historical amounts to compare against
-    
-    # Sort invoices by date
-    valid_invoices.sort(key=lambda x: (x['year'], x['month']))
-    
-    # Take last 6 invoices
-    if len(valid_invoices) > 6:
-        valid_invoices = valid_invoices[-6:]
-    
-    # Calculate weights based on gaps between invoices
-    weighted_amounts = []
-    for i in range(len(valid_invoices)):
-        current = valid_invoices[i]
-        if i == 0:
-            weight = 1
-        else:
-            # For other invoices, check gap with the previous invoice
-            prev_invoice = valid_invoices[i - 1]
-            months_from_prev = (current['year'] - prev_invoice['year']) * 12 + (current['month'] - prev_invoice['month'])
-            weight = max(1, months_from_prev)  # Weight is at least 1
-            
-        weighted_amounts.append((current['amount'], weight))
-    
-    # Calculate weighted average
-    total_weight = sum(weight for _, weight in weighted_amounts)
-    weighted_sum = sum(amount * weight for amount, weight in weighted_amounts)
-    avg_amount = weighted_sum / total_weight if total_weight > 0 else 0
-    
-    current_amount = convert_to_float(result['amount_due'])
-    
-    if current_amount is None:
-        return  # Current amount is invalid
-        
-    # Check if current amount is significantly higher than average
-    if (current_amount / current_invoice_weight) > avg_amount * Global_variables.average_multiple_threshold:
-        raise UnsaveableError(result['account_number'],
-            f"Current invoice amount (${current_amount:.2f}) is more than "
-            f"{Global_variables.average_multiple_threshold}x the weighted average "
-            f"historical amount (${avg_amount:.2f})"
-        )
 
-def tester_function(results, driver=None):
-
-    # 1. Launch browser (make sure you have installed ChromeDriver or another WebDriver)
-    quit_after = False
-    if driver is None:
-        driver = webdriver.Chrome()
-        quit_after = True
-        login(driver)
-
-    try:
-        # 8. Now that you're logged in, navigate to your actual target URL
-        driver.get(TARGET_URL)
-
-        # 9. At this point, you should be in your authenticated session.
-
-        # Wait for the link to be present in the DOM
-        wait = WebDriverWait(driver, 10)  # up to 10 seconds
-
-        driver.find_element(By.ID, "contentPlaceHolder_tabControl1_tabA4").click()
-        view_update_link = wait.until(EC.element_to_be_clickable((
-            By.XPATH,
-            '//a[@class="homeLink" and contains(@href, "AwardTypeId=8")][text()="View/Update"]'
-        )))
-        # Click the link
-        view_update_link.click()
-
-        # Input account number
-        account_number_input_bar = retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_utilityAccount")
-        account_number_input_bar.clear()
-        account_number_input_bar.send_keys(results["account_number"].replace("-", "").replace(" ", ""))
-
-        # Press 'search' for account number
-        retrying_find_element(driver, EC.element_to_be_clickable, "contentPlaceHolder_pbSearch").click()
-
-        # Wait for results table and process rows
-        table = wait.until(
-            EC.presence_of_element_located((By.ID, "contentPlaceHolder_searchResult"))
-        )
-
-        # Get all rows inside the table
-        rows = table.find_elements(By.TAG_NAME, "tr")
-
-        approved_rows = []
-        for row in rows:
-            # Find all cells in the row
-            cells = row.find_elements(By.TAG_NAME, "td")
-
-            # We need at least 2 cells: first cell is clickable text, second cell is 'Approved' or 'Completed'
-            if len(cells) >= 2:
-                status_text = cells[1].text.strip()
-                if status_text == "Approved":
-                    approved_rows.append(row)
-
-            # Check if exactly one row has 'Approved'
-        if len(approved_rows) == 1:
-            # Find the first cell of that row and click the clickable link inside it
-            row = approved_rows[0]
-            # Typically the first cell might contain a link, e.g. <td><a>Clickable Text</a></td>
-            first_cell = row.find_elements(By.TAG_NAME, "td")[0]
-            clickable_link = first_cell.find_element(By.TAG_NAME, "a")
-            clickable_link.click()
-            print("Clicked on the only row with 'Approved'.")
-        else:
-            raise AccountNumberError(results["account_number"])
-
-        check_and_request_funding(driver, results)
-        
-         # Press 'invoice' to see all invoices
-        retrying_find_element(driver, EC.element_to_be_clickable, "tabControl_InvoicesTab_HyperLink").click()
-
-        # Check if any payment is pending and if the suggested invoice number exists
-        table = wait.until(
-            EC.presence_of_element_located((By.ID, "contentPlaceHolder_invoiceControl_invoices"))
-        )
-        # Get all rows inside the table
-        rows = table.find_elements(By.TAG_NAME, "tr")
-        asserted_invoice_rows = []
-        index = 0
-        is_period_checked = False
-        for row in rows:
-            # Find all cells in the row
-            cells = row.find_elements(By.TAG_NAME, "td")
-            if len(cells) <= 9:
-                continue
-            # Check if last element contains text 'Pending Payment'
-            # cell contains: invoice number, vendor name, address, city, postal code, amount, currency, date received, cost center, status
-            status_text = cells[9].text.strip()
-            if status_text == "Pending Payment" and index < 40:
-                raise PendingPaymentError(results["account_number"])
-            # Check first two asserted invoices, check if they haven't been paid for a long time
-            elif status_text == "Asserted":
-                asserted_invoice_rows.append(cells)
-                if Global_variables.is_period_validation_needed and not is_period_checked and months_since_invoice(cells[0].text.strip()) >= 5:
-                    raise UnsaveableError(results["account_number"], "This account haven't been paid for a long time")
-                is_period_checked = True
-
-            invoice_number_text = cells[0].text.strip()
-            if invoice_number_text.replace("-", "").replace(' ', '') == results["account_number"].replace("-", "").replace(' ', '') + convert_month_abbr(results["suggested_file_name"][-7:-4]) + results["suggested_file_name"][-2:]\
-                    and status_text != 'Cancelled':
-                raise UnsaveableError(results['account_number'], f"{results['suggested_file_name']} is already exists")
-            index += 1
-
-    finally:
-        if quit_after:
-            driver.quit()
-
-def retrying_find_element(driver, condition_function, element_id):
+def retrying_find_element(page: Page, selector: str, timeout: int = 10000, max_attempts: int = 3):
+    """Playwright version of retrying element finder"""
     attempts = 0
-    max_attempts = 3
-    wait_time = 10
-    
     while attempts < max_attempts:
         try:
-            result = WebDriverWait(driver, wait_time).until(
-                condition_function((By.ID, element_id))
-            )
-            return result
-        except TimeoutException:
+            element = page.wait_for_selector(selector, timeout=timeout)
+            return element
+        except PlaywrightTimeoutError:
             attempts += 1
             if attempts < max_attempts:
-                time.sleep(1)  # Add a small delay between retries
-                print(f"Attempt {attempts} failed to find element {element_id}, retrying...")
-        except StaleElementReferenceException:
-            attempts += 1
-            if attempts < max_attempts:
-                time.sleep(1)  # Add a small delay between retries
-                print(f"Attempt {attempts} failed to find element {element_id}, retrying...")
-        except Exception as e:
-            print(f"Unexpected error while finding element {element_id}: {str(e)}")
-            raise  # Re-raise unexpected exceptions
-    
-    # If we get here, all attempts failed
-    raise TimeoutException(f"Failed to find element {element_id} after {max_attempts} attempts")
+                time.sleep(1)
+                print(f"Attempt {attempts} failed to find element {selector}, retrying...")
+        except PlaywrightError as e:
+            print(f"Unexpected error while finding element {selector}: {str(e)}")
+            raise
+
+    raise PlaywrightTimeoutError(f"Failed to find element {selector} after {max_attempts} attempts")
 

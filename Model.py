@@ -117,27 +117,6 @@ class Model(QObject):
                     Global_variables.ontario_password = (lines[1].strip() if len(lines) > 1 else "")
                 if len(lines) > 2:
                     Global_variables.todo_invoices_dir_path = (lines[2].strip() if len(lines) > 1 else "")
-                if len(lines) > 3:
-                    time_interval_data = lines[3].strip().split(',')
-                    if len(time_interval_data) == 2:
-                        Global_variables.is_period_validation_needed = time_interval_data[0] == 'True'
-                        Global_variables.period_need_validate = int(time_interval_data[1]) if Global_variables.is_period_validation_needed else 0
-                if len(lines) > 4:
-                    max_payment_data = lines[4].strip().split(',')
-                    if len(max_payment_data) == 2:
-                        Global_variables.is_max_payment_validation_needed = max_payment_data[0] == 'True'
-                        Global_variables.max_payment_need_validate = int(max_payment_data[1]) if Global_variables.is_max_payment_validation_needed else 0
-                        print(Global_variables.max_payment_need_validate)
-                if len(lines) > 5:
-                    abnormal_amount_data = lines[5].strip().split(',')
-                    if len(abnormal_amount_data) == 2:
-                        Global_variables.is_abnormal_amount_validation_needed = abnormal_amount_data[0] == 'True'
-                        Global_variables.average_multiple_threshold = int(abnormal_amount_data[1]) if Global_variables.is_abnormal_amount_validation_needed else 0
-                if len(lines) > 6:
-                    auto_months_data = lines[6].strip().split(',')
-                    if len(auto_months_data) == 2:
-                        Global_variables.is_auto_months_calculation_enabled = auto_months_data[0] == 'False'
-                        Global_variables.auto_months_threshold = int(auto_months_data[1]) if Global_variables.is_auto_months_calculation_enabled else 0
         except FileNotFoundError:
             print(f"Warning", "Configuration file not found. A new one will be created on save.")
         except Exception as e:

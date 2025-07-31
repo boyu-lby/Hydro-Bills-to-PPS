@@ -268,7 +268,7 @@ def parse_invoice_date(invoice_name):
         'JA': 1, 'JAN': 1,
         'FE': 2, 'FEB': 2,
         'MR': 3, 'MAR': 3,
-        'AP': 4, 'APR': 4,
+        'AL': 4, 'APR': 4,
         'MY': 5, 'MAY': 5,
         'JN': 6, 'JUN': 6,
         'JL': 7, 'JUL': 7,

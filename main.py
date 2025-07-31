@@ -5,6 +5,8 @@ import time
 import sys
 
 from PyQt5.QtWidgets import QApplication
+import traceback
+import ctypes
 
 from Controller import Controller
 from Excel_helper import read_column_values
@@ -14,19 +16,15 @@ from Model import Model
 
 from pynput.mouse import Controller as MouseController, Button
 
-from VendorInvoicesExtraction.Milton import parse_milton_bill
-from VendorInvoicesExtraction.NTP import parse_NTP_bill
-from VendorInvoicesExtraction.alectra_scan import parse_alectra_bill
-from VendorInvoicesExtraction.burlington_hydro_scan import parse_burlington_hydro_bill
 from VendorInvoicesExtraction.elexicon import parse_elexicon_bill
-from VendorInvoicesExtraction.grimsby import parse_grimsby_bill
-from VendorInvoicesExtraction.hydro_one import parse_hydro_one_bill
 from VendorInvoicesExtraction.oakville import parse_oakville_bill
 from VendorInvoicesExtraction.toronto_hydro_scan import parse_toronto_hydro_bill
-from Vendor_address import vendorAddressChangeMulti
 from scan_helper import find_file_with_substring, copy_as_pdf_in_original_and_destination, self_check, \
     months_since_invoice
-from VendorInvoicesExtraction.welland_scan import parse_welland_bill
+
+from playwright.sync_api import sync_playwright
+import os
+
 
 def keep_active():
     print("Keeping Microsoft Teams active. Press Ctrl+C to stop.")
@@ -40,11 +38,14 @@ def keep_active():
 
 def print_results(invoice):
     pdf_file_path = find_file_with_substring(r"C:\Users\LiBo3\Downloads", invoice)
-    results = parse_elexicon_bill(pdf_file_path)
+    results = parse_toronto_hydro_bill(pdf_file_path)
     for key, value in results.items():
         print(f"{key}: {value}")
     print(self_check(results))
 
+
+def show_native_error_popup(title, message):
+    ctypes.windll.user32.MessageBoxW(0, message, title, 0x10)  # 0x10 = MB_ICONERROR
 
 def run_app():
     app = QApplication(sys.argv)
@@ -56,6 +57,11 @@ def run_app():
 
     view.show()
     sys.exit(app.exec_())
+
+def test():
+    with sync_playwright() as p:
+        browser_path = p.chromium.executable_path
+        print("Chromium path:", browser_path)
 
 if __name__ == "__main__":
     run_app()

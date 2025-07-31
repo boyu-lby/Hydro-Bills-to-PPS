@@ -69,6 +69,11 @@ def parse_oakville_bill(pdf_path):
     match = re.search(r'TOTAL\sAMOUNT\sDUE\n\$(\d{1,3}(?:,\d{3})*\.\d{1,2})', text, re.IGNORECASE)
     if match:
         extracted_data["amount_due"] = convert_to_float(match.group(1))
+    # Example snippet: "ACCOUNT BALANCE\n$361.56"
+    match = re.search(r'ACCOUNT\sBALANCE\n\$(\d{1,3}(?:,\d{3})*\.\d{1,2})(\s*CR)?',
+                      text, re.IGNORECASE)
+    if match:
+        extracted_data["amount_due"] = convert_to_float(match.group(1))
 
     # 4) Your Total Electricity Charges
     # Example snippet: "Total Electricity Charges\n$120.70"
@@ -87,8 +92,14 @@ def parse_oakville_bill(pdf_path):
         extracted_data["ontario_electricity_rebate"] = convert_to_float(match.group(1).replace(", ", "")) * -1
 
     # 7) Balance Forward
-    # Example snippet: "BALANCE FORWARD - Past Due, Please Pay\n$271.17"
+    # Example snippet: "BALANCE FORWARD - Past Due, Please Pay\n$271.17 CR"
     match = re.search(r'BALANCE\sFORWARD\s-\sPast\sDue,\sPlease\sPay\n\$(\d{1,3}(?:,\d{3})*\.\d{1,2})(\s*CR)?', text, re.IGNORECASE)
+    if match:
+        amount_val = check_for_cr(match.group(1), match.group(2))
+        extracted_data["balance_forward"] += amount_val
+    # Example snippet: "BALANCE FORWARD \n$271.17 CR"
+    match = re.search(r'BALANCE\sFORWARD\n\$(\d{1,3}(?:,\d{3})*\.\d{1,2})(\s*CR)?',
+                      text, re.IGNORECASE)
     if match:
         amount_val = check_for_cr(match.group(1), match.group(2))
         extracted_data["balance_forward"] += amount_val
